@@ -1051,6 +1051,7 @@ body.dark-theme .rating-me,
     padding: 12px;
     border: 1px solid var(--border);
     box-shadow: var(--shadow);
+    overflow: hidden;
 }
 
 body.dark-theme .employee-card,
@@ -1105,8 +1106,9 @@ body.dark-theme .employee-card,
 }
 
 .employee-role-text {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
+    font-size: 0.72rem;
+    color: var(--text);
+    font-weight: 500;
 }
 
 .employee-status {
@@ -1131,6 +1133,16 @@ body.dark-theme .employee-card,
     gap: 6px;
     padding-top: 8px;
     border-top: 1px solid var(--border-light);
+    flex-wrap: wrap;
+}
+
+/* Отменяем глобальный button{width:100%} для кнопок в ряду действий */
+.employee-actions .role-select,
+.employee-actions .employee-toggle-btn,
+.employee-actions .employee-delete-btn {
+    width: auto;
+    flex-shrink: 0;
+    min-width: 0;
 }
 
 body.dark-theme .employee-actions,
