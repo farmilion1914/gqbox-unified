@@ -199,12 +199,6 @@ body.dark-theme .salary-block,
     background: var(--surface);
 }
 
-/* Блок зарплаты кладовщиков — выровнять по ширине с шапкой секции */
-#adminWarehouseSalary.collapsible-body {
-    padding-left: 0;
-    padding-right: 0;
-}
-
 .salary-section {
     padding: 0.9rem 1rem;
     border-bottom: 1px solid var(--border-light);
