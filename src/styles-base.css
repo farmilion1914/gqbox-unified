@@ -392,6 +392,23 @@ body.dark-theme .employee-header,
     width: 100%;
 }
 
+/* ===== ЕДИНАЯ КАРТОЧКА ТАБА ===== */
+.tab-card {
+    background: var(--surface);
+    border-radius: 20px;
+    padding: 0.9rem 1rem;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    margin-bottom: 0;
+    transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+@media (min-width: 768px) {
+    .tab-card {
+        padding: 1rem 1.2rem;
+    }
+}
+
 /* ===== АККОРДЕОНЫ ===== */
 .collapsible-section,
 .accordion-item {
