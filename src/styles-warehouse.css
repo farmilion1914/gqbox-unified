@@ -39,6 +39,24 @@
     animation: fadeIn 0.25s ease;
 }
 
+/* Убираем белую рамку снаружи (edge-to-edge), не трогая внутренний интерфейс */
+.app-container.wh-screen {
+    padding: 0;
+    padding-top: max(0, env(safe-area-inset-top, 0px));
+    padding-left: max(0, env(safe-area-inset-left, 0px));
+    padding-right: max(0, env(safe-area-inset-right, 0px));
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+}
+
+.app-container.wh-screen .glass-card.dashboard {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    margin-bottom: 0;
+    padding: 0;
+}
+
 /* Сегменты Москва/Пушкино в шапке (только для кладовщика) */
 .header-dash {
     display: flex;

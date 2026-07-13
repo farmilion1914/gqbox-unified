@@ -79,7 +79,7 @@ export async function renderUserPanel(user) {
     const historyContent = `<div class="tab-card" id="historyContainer">${renderHistory(allRecords)}</div>`;
 
     return `
-        <div class="app-container">
+        <div class="app-container packer-screen">
             <div class="glass-card dashboard">
                 <div class="header-dash">
                     <div class="header-top-row">

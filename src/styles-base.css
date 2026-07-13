@@ -392,6 +392,26 @@ body.dark-theme .employee-header,
     width: 100%;
 }
 
+/* Убираем белую карточку-обёртку (glass-card) для упаковщицы и админки */
+.app-container.packer-screen,
+.app-container.admin-screen {
+    padding: 0;
+    padding-top: max(0, env(safe-area-inset-top, 0px));
+    padding-left: max(0, env(safe-area-inset-left, 0px));
+    padding-right: max(0, env(safe-area-inset-right, 0px));
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+}
+
+.app-container.packer-screen .glass-card.dashboard,
+.app-container.admin-screen .glass-card.dashboard {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    margin-bottom: 0;
+    padding: 0;
+}
+
 /* ===== ЕДИНАЯ КАРТОЧКА ТАБА ===== */
 .tab-card {
     background: var(--surface);
@@ -583,11 +603,15 @@ body.dark-theme .salary-segment:active:not(.active),
 .login-card {
     background: var(--surface);
     border-radius: 20px;
-    padding: 0.9rem 1rem;
+    padding: 1.6rem 1.4rem;
     box-shadow: var(--shadow);
     border: 1px solid var(--border);
     margin-bottom: 12px;
     transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.input-group-login {
+    margin-bottom: 14px;
 }
 
 @media (min-width: 768px) {
@@ -1418,7 +1442,7 @@ body.dark-theme .attendance-badge,
 
 /* ===== ЛОГИН ===== */
 .login-screen, #loginScreen {
-    max-width: 420px; width: 100%; margin: 0 auto; padding-top: max(10vh, env(safe-area-inset-top, 0px));
+    max-width: 480px; width: 100%; margin: 0 auto; padding-top: max(10vh, env(safe-area-inset-top, 0px));
 }
 
 .logo-container { display: flex; justify-content: center; margin-bottom: 20px; }
@@ -1456,6 +1480,48 @@ body.dark-theme .reg-btn,
 }
 
 .reg-toggle:hover { color: var(--text); }
+
+.reg-form {
+    margin-top: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+.role-select-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.role-pick {
+    background: var(--role-option-bg);
+    border: 1.5px solid var(--role-option-border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 10px 4px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.role-pick:active { transform: scale(0.97); }
+
+.role-pick.active {
+    background: var(--role-option-active-bg);
+    border-color: var(--role-option-active-border);
+    font-weight: 600;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
+}
+
+body.dark-theme .role-pick.active,
+[data-theme="dark"] .role-pick.active {
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+}
 
 .error-msg, .success-msg {
     padding: 10px 14px; border-radius: 10px; margin-top: 10px; font-size: 0.8rem; display: none;

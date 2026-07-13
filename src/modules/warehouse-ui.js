@@ -411,7 +411,7 @@ async function renderUserPanelHTML(user, todayStr) {
         </div>`;
 
     return `
-        <div class="app-container">
+        <div class="app-container wh-screen">
             <div class="glass-card dashboard">
                 <div class="header-dash">
                     <div class="header-top-row">

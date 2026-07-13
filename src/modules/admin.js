@@ -29,7 +29,7 @@ const ICONS = {
 // ===== РЕНДЕР АДМИН-ПАНЕЛИ =====
 export async function renderAdminPanel(user) {
     return `
-        <div class="app-container">
+        <div class="app-container admin-screen">
             <div class="glass-card dashboard">
                 <div class="header-dash">
                     <div class="header-top-row">

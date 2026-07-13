@@ -90,6 +90,11 @@ export async function loginUser(login, password) {
 async function detectAppRole(user) {
     if (user.role === 'admin' || user.role === 'superadmin') return 'admin';
 
+    // Если роль уже сохранена при регистрации — используем её
+    if (user.appRole && ['packer', 'operator', 'warehouse'].includes(user.appRole)) {
+        return user.appRole;
+    }
+
     // Проверяем записи упаковки (база упаковщиц)
     const packSnap = await getDB().collection('pack_records')
         .where('userId', '==', user.id)
@@ -158,13 +163,17 @@ export async function registerUser(login, password, name, role) {
         .get();
     if (!exist.empty) return { success: false, error: 'Логин уже занят' };
 
+    const appRole = role || 'packer';
+    const isWarehouse = appRole === 'warehouse';
+
     await getDB().collection('employees').add({
         login: login.trim(),
         password,
         name: name.trim(),
-        role: role || 'user',
+        role: isWarehouse ? 'user' : (appRole === 'operator' ? 'operator' : 'user'),
         active: true,
-        warehouseRole: 'standard'
+        warehouseRole: isWarehouse ? 'standard' : null,
+        appRole: appRole
     });
 
     return { success: true };
