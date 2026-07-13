@@ -749,11 +749,6 @@ button:disabled {
     cursor: not-allowed;
 }
 
-body.dark-theme button,
-[data-theme="dark"] button {
-    background: #0a84ff;
-}
-
 body.dark-theme button:disabled,
 [data-theme="dark"] button:disabled {
     background: #3a3a3c;
