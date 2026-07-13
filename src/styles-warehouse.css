@@ -149,6 +149,15 @@ body.dark-theme .ios-segment.active,
     width: auto;
 }
 
+/* Зарплатная карточка кладовщика — на всю ширину (как верхняя шапка) */
+#whTabSalary .op-card {
+    margin-left: 0;
+    margin-right: 0;
+    background: var(--surface);
+    border-color: var(--border);
+    box-shadow: var(--shadow);
+}
+
 body.dark-theme .op-card,
 [data-theme="dark"] .op-card {
     background: #2c2c2e;
