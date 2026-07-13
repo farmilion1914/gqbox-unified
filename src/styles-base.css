@@ -145,7 +145,8 @@ body {
     background: var(--bg);
     min-height: 100vh;
     min-height: 100dvh;
-    padding: 0;
+    padding: 0.75rem;
+    margin: 0;
     -webkit-tap-highlight-color: transparent;
     color: var(--text);
     -webkit-font-smoothing: antialiased;
@@ -160,17 +161,12 @@ body {
     max-width: 800px;
     margin: 0 auto;
     width: 100%;
-    padding: 0.75rem;
-    padding-top: max(0.75rem, env(safe-area-inset-top));
-    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
-    padding-left: max(0.75rem, env(safe-area-inset-left));
-    padding-right: max(0.75rem, env(safe-area-inset-right));
+    padding: 0;
 }
 
 @media (min-width: 768px) {
     .app-container {
-        padding: 18px;
-        padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+        padding: 0;
     }
 }
 
@@ -395,10 +391,6 @@ body.dark-theme .employee-header,
 /* Убираем белую карточку-обёртку (glass-card) для упаковщицы и админки */
 .app-container.packer-screen,
 .app-container.admin-screen {
-    padding: 0;
-    padding-top: max(0, env(safe-area-inset-top, 0px));
-    padding-left: max(0, env(safe-area-inset-left, 0px));
-    padding-right: max(0, env(safe-area-inset-right, 0px));
     padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
 }
 
@@ -410,6 +402,30 @@ body.dark-theme .employee-header,
     border-radius: 0;
     margin-bottom: 0;
     padding: 0;
+}
+
+/* ===== КОНТЕЙНЕР-ПЕРЕКЛЮЧАТЕЛЬ ВИДОВ (по аналогии с глобальным отступом body) ===== */
+.switch-container {
+    display: none;
+    opacity: 0;
+    transform: translateX(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.switch-container.active {
+    display: block;
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.switch-container.swipe-left {
+    opacity: 0;
+    transform: translateX(-20px);
+}
+
+.switch-container.swipe-right {
+    opacity: 0;
+    transform: translateX(20px);
 }
 
 /* ===== ЕДИНАЯ КАРТОЧКА ТАБА ===== */
