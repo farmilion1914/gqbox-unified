@@ -400,6 +400,8 @@ body.dark-theme .employee-header,
     box-shadow: var(--shadow);
     border: 1px solid var(--border);
     margin-bottom: 0;
+    min-width: 0;
+    overflow: hidden;
     transition: background 0.3s ease, border-color 0.3s ease;
 }
 

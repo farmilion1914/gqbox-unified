@@ -125,7 +125,7 @@ function renderHistory(records) {
             ${totalPages > 1 ? `<span class="text-muted">Стр. ${historyCurrentPage}/${totalPages}</span>` : ''}
         </div>
         <div class="table-wrap">
-            <table><thead><tr><th>ИП</th><th>МП</th><th>Склад</th><th>Артикул</th><th>Кол-во</th><th>Дата</th><th></th></tr></thead>
+            <table><thead><tr><th>ИП</th><th>МП</th><th>Склад</th><th>Арт.</th><th>Кол-во</th><th>Дата</th><th></th></tr></thead>
             <tbody>${pageRecords.map(r => `
                 <tr>
                     <td>${r.ip ? `<span class="ip-badge">${esc(r.ip)}</span>` : '—'}</td>

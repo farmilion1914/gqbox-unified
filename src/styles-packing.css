@@ -139,10 +139,44 @@ body.dark-theme .ios-tab-item.active,
 
 .tab-content {
     display: none;
+    min-width: 0;
 }
 
 .tab-content.active {
     display: block;
+    min-width: 0;
+}
+
+/* ===== ТАБ-КАРТОЧКА: ИСТОРИЯ — ФИКС ШИРИНЫ ТАБЛИЦЫ ===== */
+#historyContainer.tab-card {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+    overflow: visible;
+}
+
+#historyContainer .table-wrap {
+    display: block;
+    width: 100%;
+    max-height: 50vh;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+#historyContainer table {
+    width: 100%;
+    table-layout: fixed;
+}
+
+#historyContainer th,
+#historyContainer td {
+    box-sizing: border-box;
+    padding: 6px 4px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 /* ===== СКАНЕР ШТРИХКОДОВ ===== */
