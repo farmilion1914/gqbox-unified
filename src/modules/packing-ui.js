@@ -59,7 +59,7 @@ export async function renderUserPanel(user) {
     </div>`;
 
     const packingContent = `
-        <div class="tab-card">
+        <div class="form-panel">
             <div class="form-title">Добавить упаковку</div>
             ${triggers}
             <div class="input-group">
@@ -70,13 +70,13 @@ export async function renderUserPanel(user) {
                     </div>
                 </div>
                 <div class="input-field"><label>Количество</label><input type="number" id="qtyInput" min="1" placeholder="Кол-во"></div>
-            </div>
             <button id="addPackBtn">Добавить</button>
-            <div id="msgPanel"></div>
+        </div>
+        <div id="msgPanel"></div>
         </div>`;
 
-    const salaryContent = `<div class="tab-card" id="salaryContainer"><div class="loading-spinner">Загрузка...</div></div>`;
-    const historyContent = `<div class="tab-card" id="historyContainer">${renderHistory(allRecords)}</div>`;
+    const salaryContent = `<div id="salaryContainer"><div class="loading-spinner">Загрузка...</div></div>`;
+    const historyContent = `<div id="historyContainer">${renderHistory(allRecords)}</div>`;
 
     return `
         <div class="app-container">
@@ -182,6 +182,7 @@ export function attachUserEvents() {
     const packingSwipeThreshold = 60;
 
     document.addEventListener('touchstart', (e) => {
+        // только если виден таб-бар (упаковщицы)
         if (document.getElementById('iosTabBar')?.style.display !== 'flex') return;
         packingSwipeStartX = e.touches[0].clientX;
     }, { passive: true });
@@ -192,8 +193,10 @@ export function attachUserEvents() {
         if (Math.abs(diffX) > packingSwipeThreshold) {
             const tabIdx = tabOrder.indexOf(currentTab);
             if (diffX < 0 && tabIdx < tabOrder.length - 1) {
+                // свайп влево → следующий таб
                 switchTab(tabOrder[tabIdx + 1]);
             } else if (diffX > 0 && tabIdx > 0) {
+                // свайп вправо → предыдущий таб
                 switchTab(tabOrder[tabIdx - 1]);
             }
         }
