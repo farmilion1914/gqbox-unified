@@ -301,6 +301,7 @@ async function loadDashboard() {
                     <div class="kpi-sub">отметились сегодня</div>
                 </div>
             </div>
+            <div class="total-salary-card" id="adminTotalSalaryCard"></div>
             <div class="trend-card">
                 <div class="trend-header">
                     <span>Неделя (${weekStart.slice(5)} — ${weekEnd.slice(5)})</span>
@@ -327,8 +328,59 @@ async function loadDashboard() {
         container.querySelectorAll('.collapsible-header').forEach(header => {
             header.addEventListener('click', function () { this.closest('.collapsible-section').classList.toggle('open'); });
         });
+        loadTotalSalary(0);
     } catch (err) {
         container.innerHTML = `<div class="empty-state" style="color:#ff3b30;">Ошибка загрузки: ${esc(err.message)}</div>`;
+    }
+}
+
+// ===== ОБЩАЯ ЗАРПЛАТА ВСЕХ СОТРУДНИКОВ (ПО НЕДЕЛЯМ) =====
+async function loadTotalSalary(offset) {
+    const container = document.getElementById('adminTotalSalaryCard');
+    if (!container) return;
+    container.innerHTML = '<div class="loading-spinner">Загрузка...</div>';
+    try {
+        const { getTodayStr, getWeekStart, getWeekEnd, formatDateShort } = await import('../utils/dates.js');
+        const today = getTodayStr();
+        const baseStart = getWeekStart(today);
+        const d = new Date(baseStart);
+        d.setDate(d.getDate() + offset * 7);
+        const start = getWeekStart(d.toISOString().slice(0, 10));
+        const end = getWeekEnd(start);
+
+        const [packData, whData] = await Promise.all([
+            (await import('./salary.js')).calculateTotalSalaryForPeriod(start, end),
+            (await import('./salary-warehouse.js')).calculateAllSalaries(start, end)
+        ]);
+
+        const packTotal = packData.totalSalary || 0;
+        let whTotal = 0;
+        Object.values(whData.salaryByUser || {}).forEach(u => { whTotal += u.total || 0; });
+        const grandTotal = packTotal + whTotal;
+
+        container.innerHTML = `
+            <div class="total-salary-header">
+                <span class="total-salary-title">Общая зарплата</span>
+                <div class="total-salary-nav">
+                    <button class="total-salary-nav-btn" id="totalSalaryPrev">←</button>
+                    <span class="total-salary-range">${formatDateShort(new Date(start))} — ${formatDateShort(new Date(end))}</span>
+                    <button class="total-salary-nav-btn" id="totalSalaryNext">→</button>
+                </div>
+            </div>
+            <div class="total-salary-body">
+                <div class="total-salary-row"><span>Упаковщицы и операторы</span><span>${packTotal.toLocaleString('ru-RU')} ₽</span></div>
+                <div class="total-salary-row"><span>Кладовщики</span><span>${whTotal.toLocaleString('ru-RU')} ₽</span></div>
+                <div class="total-salary-divider"></div>
+                <div class="total-salary-total"><span>Итого за неделю</span><span>${grandTotal.toLocaleString('ru-RU')} ₽</span></div>
+            </div>
+        `;
+
+        const prev = document.getElementById('totalSalaryPrev');
+        const next = document.getElementById('totalSalaryNext');
+        if (prev) prev.onclick = () => { _totalSalaryWeekOffset--; loadTotalSalary(_totalSalaryWeekOffset); };
+        if (next) next.onclick = () => { _totalSalaryWeekOffset++; loadTotalSalary(_totalSalaryWeekOffset); };
+    } catch (err) {
+        container.innerHTML = `<div class="empty-state" style="color:#ff3b30;">Ошибка: ${esc(err.message)}</div>`;
     }
 }
 
@@ -501,6 +553,7 @@ async function loadAdminPackingTab() {
 // ===== ПОСЕЩАЕМОСТЬ: НАВИГАЦИЯ И КЛИК ПО ДНЮ =====
 let _attendanceWeekOffset = 0;
 let _attendanceMode = 'week';
+let _totalSalaryWeekOffset = 0;
 
 async function initAttendanceEvents() {
     const prevBtn = document.getElementById('attendancePrev');
