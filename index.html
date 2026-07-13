@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
+    <title>GQbox</title>
+    
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    
+    <!-- 1. Базовые стили (переменные, сброс, общие компоненты) -->
+    <link rel="stylesheet" href="src/styles-base.css">
+    <!-- 2. Админка (расширяет базу) -->
+    <link rel="stylesheet" href="src/styles-admin.css">
+    <!-- 3. Специфика упаковщиц -->
+    <link rel="stylesheet" href="src/styles-packing.css">
+    <!-- 4. Специфика кладовщиков -->
+    <link rel="stylesheet" href="src/styles-warehouse.css">
+</head>
+<body>
+    <!-- Корневой контейнер -->
+    <div id="appRoot"></div>
+
+    <!-- Сканер штрихкодов (общий) -->
+    <div id="scannerOverlay" style="display:none;">
+        <div id="scannerView"></div>
+        <div class="scanner-hint">Наведите камеру на штрихкод</div>
+        <button id="closeScannerBtn">✕</button>
+    </div>
+
+    <!-- Тосты (общие) -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Таб-бар упаковщиц -->
+    <div class="ios-tab-bar" id="iosTabBar" style="display:none;">
+        <div class="ios-tab-item active" data-tab="packing">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+            <span class="ios-tab-label">Упаковка</span>
+        </div>
+        <div class="ios-tab-item" data-tab="salary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="6" width="20" height="12" rx="2"/>
+                <circle cx="12" cy="12" r="3"/>
+                <line x1="6" y1="9" x2="6" y2="9.01"/>
+                <line x1="18" y1="15" x2="18" y2="15.01"/>
+            </svg>
+            <span class="ios-tab-label">Зарплата</span>
+        </div>
+        <div class="ios-tab-item" data-tab="history">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span class="ios-tab-label">История</span>
+        </div>
+    </div>
+
+    <script type="module" src="src/app.js"></script>
+</body>
+</html>
