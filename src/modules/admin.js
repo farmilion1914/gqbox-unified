@@ -728,7 +728,6 @@ async function loadAdminPhotosTab() {
         container.innerHTML = `
             <div class="date-selector" style="margin:0 0 12px 0;justify-content:center;">
                 <input type="date" class="input-field" id="adminPhotoDate" value="${today}" style="width:auto;">
-                <button id="adminPhotoLoadBtn" class="btn-primary">Загрузить</button>
             </div>
             <div id="adminPhotoContainer">Загрузка...</div>
         `;
@@ -771,16 +770,16 @@ async function loadAdminPhotosTab() {
                     
                     const color = CITY_COLORS[ci % CITY_COLORS.length];
                     html += `
-                        <div class="city-section expanded">
+                        <div class="city-section">
                             <div class="city-section-header" style="padding:8px 12px;">
                                 <div class="city-section-title">
                                     <span class="city-accent" style="background:${color};width:4px;height:16px;border-radius:2px;display:inline-block;"></span>
                                     ${esc(city)}
                                     <span class="city-section-count">${pallets.length}</span>
                                 </div>
-                                <span class="city-section-chevron" style="transform:rotate(0deg);transition:transform 0.2s;">▼</span>
+                                <span class="city-section-chevron" style="transition:transform 0.2s;">▼</span>
                             </div>
-                            <div class="city-section-body expanded">
+                            <div class="city-section-body">
                                 <div>
                                     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;padding:4px 8px 8px;">
                     `;
@@ -839,10 +838,8 @@ async function loadAdminPhotosTab() {
             }
         }
 
-        document.getElementById('adminPhotoLoadBtn').onclick = () => {
-            const date = document.getElementById('adminPhotoDate')?.value || today;
-            loadPhotos(date);
-        };
+        const adminPhotoDate = document.getElementById('adminPhotoDate');
+        if (adminPhotoDate) adminPhotoDate.addEventListener('change', () => loadPhotos(adminPhotoDate.value || today));
         loadPhotos(today);
 
     } catch (err) {
