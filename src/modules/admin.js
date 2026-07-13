@@ -1059,16 +1059,16 @@ async function loadAdminWarehouseTab() {
 
         container.innerHTML = `
             <div class="collapsible-section open">
-                <div class="collapsible-header"><div class="collapsible-title">Логи операций</div><span class="collapsible-icon">${ICONS.chevronDown}</span></div>
-                <div class="collapsible-content"><div><div class="collapsible-body" id="adminLogsContainer">Загрузка...</div></div></div>
+                <div class="collapsible-header"><div class="collapsible-title">Зарплата кладовщиков</div><span class="collapsible-icon">${ICONS.chevronDown}</span></div>
+                <div class="collapsible-content"><div><div class="collapsible-body" id="adminWarehouseSalary">Загрузка...</div></div></div>
             </div>
             <div class="collapsible-section">
                 <div class="collapsible-header"><div class="collapsible-title">Отчёты</div><span class="collapsible-icon">${ICONS.chevronDown}</span></div>
                 <div class="collapsible-content"><div><div class="collapsible-body" id="adminWarehouseReports"></div></div></div>
             </div>
             <div class="collapsible-section">
-                <div class="collapsible-header"><div class="collapsible-title">Зарплата кладовщиков</div><span class="collapsible-icon">${ICONS.chevronDown}</span></div>
-                <div class="collapsible-content"><div><div class="collapsible-body" id="adminWarehouseSalary">Загрузка...</div></div></div>
+                <div class="collapsible-header"><div class="collapsible-title">Логи операций</div><span class="collapsible-icon">${ICONS.chevronDown}</span></div>
+                <div class="collapsible-content"><div><div class="collapsible-body" id="adminLogsContainer">Загрузка...</div></div></div>
             </div>
         `;
 
