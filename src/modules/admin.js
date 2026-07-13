@@ -1199,10 +1199,6 @@ async function loadAdminUsersTab() {
         });
 
         let html = `
-            <div class="users-toolbar">
-                <div class="users-search"><input type="text" class="input-field" id="usersSearchInput" placeholder="Поиск по имени или логину..."></div>
-                <button id="addUserBtn" class="ios-add-btn">${ICONS.add} Добавить</button>
-            </div>
             <div class="users-stats">
                 <div class="users-stat-item"><span class="users-stat-num">${allEmps.length}</span><span class="users-stat-label">всего</span></div>
                 <div class="users-stat-item"><span class="users-stat-num">${allEmps.filter(e => e.active !== false).length}</span><span class="users-stat-label">активных</span></div>
@@ -1212,12 +1208,11 @@ async function loadAdminUsersTab() {
         `;
         container.innerHTML = html;
 
-        function renderEmployeeList(filterText = '') {
+        function renderEmployeeList() {
             const list = document.getElementById('employeeList');
             if (!list) return;
-            const f = filterText.toLowerCase().trim();
-            const filtered = f ? allEmps.filter(e => (e.name || '').toLowerCase().includes(f) || (e.login || '').toLowerCase().includes(f)) : allEmps;
-            if (filtered.length === 0) { list.innerHTML = '<div class="empty-state">Ничего не найдено</div>'; return; }
+            const filtered = allEmps;
+            if (filtered.length === 0) { list.innerHTML = '<div class="empty-state">Нет сотрудников</div>'; return; }
 
             const roleLabels = { admin: 'Админ', user: 'Пользователь', superadmin: 'Суперадмин' };
             const whRoleLabels = { senior: 'Старший', admin: 'Админ склада', pro: 'PRO', standard: 'Кладовщик', probation: 'Испытательный' };
@@ -1313,49 +1308,7 @@ async function loadAdminUsersTab() {
             });
         }
 
-        document.getElementById('usersSearchInput')?.addEventListener('input', function () { renderEmployeeList(this.value); });
-        document.getElementById('addUserBtn')?.addEventListener('click', () => showAddUserModal());
         renderEmployeeList();
-
-        function showAddUserModal() {
-            const existing = document.querySelector('.employee-modal-overlay');
-            if (existing) existing.remove();
-            const overlay = document.createElement('div');
-            overlay.className = 'employee-modal-overlay';
-            overlay.innerHTML = `
-                <div class="employee-modal">
-                    <div class="employee-modal-header"><h3>Новый сотрудник</h3><button class="employee-modal-close">✕</button></div>
-                    <div class="employee-modal-body">
-                        <div class="input-field"><label>Имя</label><input type="text" id="newEmpName" class="input-field" placeholder="Иван Иванов"></div>
-                        <div class="input-field"><label>Логин</label><input type="text" id="newEmpLogin" class="input-field" placeholder="ivanov" autocomplete="off"></div>
-                        <div class="input-field"><label>Пароль</label><input type="text" id="newEmpPassword" class="input-field" placeholder="Не менее 4 символов"></div>
-                        <div class="input-field"><label>Проект</label><select id="newEmpProject" class="input-field"><option value="packing">Упаковка</option><option value="warehouse">Склад</option></select></div>
-                        <div class="input-field"><label>Роль</label><select id="newEmpRole" class="input-field"><option value="user">Пользователь</option><option value="admin">Админ</option></select></div>
-                    </div>
-                    <div class="employee-modal-footer"><button id="saveNewEmpBtn" class="btn-primary" style="flex:1;">Сохранить</button><button id="cancelNewEmpBtn" class="btn-secondary" style="flex:1;">Отмена</button></div>
-                </div>`;
-            document.body.appendChild(overlay);
-            const closeModal = () => { overlay.classList.add('removing'); setTimeout(() => overlay.remove(), 200); };
-            overlay.querySelector('.employee-modal-close').onclick = closeModal;
-            overlay.querySelector('#cancelNewEmpBtn').onclick = closeModal;
-            overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
-            overlay.querySelector('#saveNewEmpBtn').onclick = async () => {
-                const name = document.getElementById('newEmpName')?.value.trim();
-                const login = document.getElementById('newEmpLogin')?.value.trim();
-                const password = document.getElementById('newEmpPassword')?.value.trim();
-                const project = document.getElementById('newEmpProject')?.value;
-                const role = document.getElementById('newEmpRole')?.value;
-                if (!name || !login || !password) { toast.warning('Заполните все поля'); return; }
-                if (password.length < 4) { toast.warning('Минимум 4 символа'); return; }
-                const db = project === 'warehouse' ? getWarehouseDB() : getDB();
-                try {
-                    const existSnap = await db.collection('employees').where('login', '==', login).limit(1).get();
-                    if (!existSnap.empty) { toast.warning('Логин занят'); return; }
-                    await db.collection('employees').add({ name, login, password, role, active: true, warehouseRole: 'standard' });
-                    invalidateEmployeesCache(); toast.success(`"${name}" добавлен`); closeModal(); loadAdminUsersTab();
-                } catch (err) { toast.error('Ошибка: ' + err.message); }
-            };
-        }
     } catch (err) {
         container.innerHTML = `<div class="empty-state" style="color:#ff3b30;">Ошибка: ${esc(err.message)}</div>`;
     }
