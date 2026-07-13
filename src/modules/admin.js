@@ -722,28 +722,32 @@ async function loadAdminPhotosTab() {
 
     try {
         const { getWarehouseDB } = await import('../services/firebase.js');
-        const { getTodayStr } = await import('../utils/dates.js');
+        const { getTodayStr, getWeekStart, getWeekEnd, formatDateShort } = await import('../utils/dates.js');
         const today = getTodayStr();
+        let _photoWeekOffset = 0;
 
         container.innerHTML = `
-            <div class="date-selector" style="margin:0 0 12px 0;justify-content:center;">
-                <input type="date" class="input-field" id="adminPhotoDate" value="${today}" style="width:auto;">
+            <div class="attendance-period-nav" style="margin-bottom:12px;">
+                <button class="salary-nav-btn nav-arrow" id="adminPhotoPrev">◀</button>
+                <span class="attendance-period-label" id="adminPhotoWeekLabel"></span>
+                <button class="salary-nav-btn nav-arrow" id="adminPhotoNext">▶</button>
             </div>
             <div id="adminPhotoContainer">Загрузка...</div>
         `;
 
-        async function loadPhotos(dateStr) {
+        async function loadPhotos(startStr, endStr) {
             const photoContainer = document.getElementById('adminPhotoContainer');
             if (!photoContainer) return;
             photoContainer.innerHTML = '<div class="loading-spinner">Загрузка...</div>';
 
             try {
                 const snap = await getWarehouseDB().collection('pallet_photos')
-                    .where('date', '==', dateStr)
+                    .where('date', '>=', startStr)
+                    .where('date', '<=', endStr)
                     .get();
                 
                 if (snap.empty) {
-                    photoContainer.innerHTML = '<div class="empty-state">Нет фото за эту дату</div>';
+                    photoContainer.innerHTML = '<div class="empty-state">Нет фото за эту неделю</div>';
                     return;
                 }
 
@@ -838,9 +842,22 @@ async function loadAdminPhotosTab() {
             }
         }
 
-        const adminPhotoDate = document.getElementById('adminPhotoDate');
-        if (adminPhotoDate) adminPhotoDate.addEventListener('change', () => loadPhotos(adminPhotoDate.value || today));
-        loadPhotos(today);
+        function refreshPhotoWeek() {
+            const baseStart = getWeekStart(today);
+            const d = new Date(baseStart);
+            d.setDate(d.getDate() + _photoWeekOffset * 7);
+            const start = getWeekStart(d.toISOString().slice(0, 10));
+            const end = getWeekEnd(start);
+            const label = document.getElementById('adminPhotoWeekLabel');
+            if (label) label.textContent = `${formatDateShort(new Date(start))} — ${formatDateShort(new Date(end))}`;
+            loadPhotos(start, end);
+        }
+
+        const photoPrev = document.getElementById('adminPhotoPrev');
+        const photoNext = document.getElementById('adminPhotoNext');
+        if (photoPrev) photoPrev.onclick = () => { _photoWeekOffset--; refreshPhotoWeek(); };
+        if (photoNext) photoNext.onclick = () => { _photoWeekOffset++; refreshPhotoWeek(); };
+        refreshPhotoWeek();
 
     } catch (err) {
         container.innerHTML = `<div class="empty-state" style="color:#ff3b30;">Ошибка: ${esc(err.message)}</div>`;
