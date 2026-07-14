@@ -383,6 +383,70 @@ body.dark-theme .ios-tab-item.active,
     color: var(--day-qty-color);
 }
 
+/* ===== ОТМЕТКА О ПРИБЫТИИ ===== */
+.checkin-section {
+    background: var(--success-bg);
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    transition: background 0.3s ease;
+    border: 1px solid var(--success-border);
+}
+
+.checkin-section.checked {
+    background: var(--primary-light);
+    border-color: var(--border);
+}
+
+body.dark-theme .checkin-section.checked,
+[data-theme="dark"] .checkin-section.checked {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: var(--border-light);
+}
+
+.checkin-info {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--success);
+    flex: 1;
+    min-width: 0;
+}
+
+.checkin-section.checked .checkin-info {
+    color: var(--text);
+}
+
+.checkin-btn {
+    background: var(--success);
+    color: #ffffff;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    width: auto;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.checkin-btn:active {
+    transform: scale(0.97);
+}
+
+.checkin-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* ===== АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ ===== */
 @media (max-width: 480px) {
     .salary-nav-title {
