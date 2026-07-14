@@ -423,8 +423,8 @@ async function renderUserPanelHTML(user, todayStr) {
                             </div>
                         </div>
                         <div class="actions-block">
-                            <button class="theme-toggle-btn" id="themeToggleBtnWH" aria-label="Тема">◐</button>
-                            <button id="logoutBtnWH" class="header-btn danger" aria-label="Выход">✕</button>
+                        <button class="theme-toggle-btn" id="themeToggleBtnWH" aria-label="Тема">◐</button>
+                            <button id="logoutBtnWH" class="header-btn danger" aria-label="Выход"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 2H3v12h3M11 11l3-3-3-3M14 8H6" stroke="currentColor" stroke-width="1.5"/></svg></button>
                         </div>
                     </div>
                     <!-- Строка: зарплата слева + Москва/Пушкино справа -->

@@ -44,9 +44,9 @@ export const Theme = {
     
     _updateToggleButton(isDark) {
         let btn = document.getElementById('themeToggleBtn');
-        if (btn) btn.textContent = isDark ? '☀️' : '🌙';
+        if (btn) btn.textContent = isDark ? '◑' : '◐';
         btn = document.getElementById('themeToggleBtnWH');
-        if (btn) btn.textContent = isDark ? '☀️' : '🌙';
+        if (btn) btn.textContent = isDark ? '◑' : '◐';
     },
     
     toggle() {
