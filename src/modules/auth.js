@@ -181,5 +181,5 @@ export async function registerUser(login, password, name, role) {
 
 // ===== СТАВКА ПОЛЬЗОВАТЕЛЯ =====
 export function getDailyRate(user) {
-    return user?.dailyRate || 3750;
+    return user?.dailyRate || 4000;
 }

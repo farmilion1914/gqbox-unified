@@ -258,6 +258,46 @@ body.dark-theme .employee-header,
     color: rgba(255, 255, 255, 0.9);
 }
 
+/* Зарплата в шапке кладовщика — жёлтая, в левом нижнем углу */
+.user-salary {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #ffd60a;
+    line-height: 1.2;
+    align-self: center;
+}
+
+.user-salary.zero {
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 500;
+}
+
+body.dark-theme .user-salary,
+[data-theme="dark"] .user-salary {
+    color: #ffd60a;
+}
+
+/* Строка: зарплата слева + Москва/Пушкино справа */
+.wh-header-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.wh-header-bottom .user-salary {
+    flex-shrink: 0;
+}
+
+.wh-header-bottom .wh-segment-switch {
+    margin: 0;
+    flex: 1;
+    max-width: 220px;
+}
+
 .header-actions,
 .actions-block {
     display: flex;

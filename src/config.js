@@ -45,7 +45,7 @@ export const IP_LIST = ["КАА", "КЮА", "БМС", "ДЕВ"];
 // ИП для кладовщиков (фото паллет)
 export const IP_LIST_WAREHOUSE = ['Абакаров', 'Абдулаев', 'Алиев', 'Гаджиев', 'Ибрагимов', 'Магомедов'];
 
-export const DEFAULT_DAILY_RATE = 3750;
+export const DEFAULT_DAILY_RATE = 4000;
 
 export const MAX_PHOTOS = 4;
 
@@ -107,22 +107,22 @@ export const KPI_RATES = {
 
 export function getWarehouseRoleLabel(role) {
     const labels = {
-        senior: 'Старший',
-        admin: 'Админ',
-        pro: 'PRO',
+        senior: 'Старший кладовщик',
+        admin: 'Админ склада',
+        pro: 'Кладовщик PRO',
         standard: 'Кладовщик',
-        probation: 'Испытательный'
+        probation: 'Кладовщик (Испытательный)'
     };
     return labels[role] || role;
 }
 
 export function getWarehouseRoleRate(role) {
     const rates = {
-        senior: 4000,
+        senior: 4500,
         admin: 3500,
-        pro: 3500,
+        pro: 4000,
         standard: 3000,
-        probation: 2500
+        probation: 2700
     };
     return rates[role] || 3000;
 }

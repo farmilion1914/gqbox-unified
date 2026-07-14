@@ -1181,6 +1181,7 @@ async function loadAdminUsersTab() {
         const { getWarehouseDB, getDB } = await import('../services/firebase.js');
         const { confirmDelete } = await import('../ui/popups.js');
         const { getTodayStr } = await import('../utils/dates.js');
+        const { getWarehouseRoleRate } = await import('../config.js');
 
         const today = getTodayStr();
 
@@ -1229,7 +1230,7 @@ async function loadAdminUsersTab() {
             if (filtered.length === 0) { list.innerHTML = '<div class="empty-state">Нет сотрудников</div>'; return; }
 
             const roleLabels = { admin: 'Админ', user: 'Пользователь', superadmin: 'Суперадмин' };
-            const whRoleLabels = { senior: 'Старший', admin: 'Админ склада', pro: 'PRO', standard: 'Кладовщик', probation: 'Испытательный' };
+            const whRoleLabels = { senior: 'Старший кладовщик', admin: 'Админ склада', pro: 'Кладовщик PRO', standard: 'Кладовщик', probation: 'Кладовщик (Испытательный)' };
 
             list.innerHTML = filtered.map(e => {
                 const isActive = e.active !== false;
@@ -1240,6 +1241,22 @@ async function loadAdminUsersTab() {
                 const initial = (e.name || '?')[0].toUpperCase();
                 const avatarBg = isActive ? 'var(--badge-active-bg)' : 'var(--badge-inactive-bg)';
                 const avatarColor = isActive ? 'var(--badge-active-text)' : 'var(--badge-inactive-text)';
+                // Ставка за выход
+                let dailyRateText = '';
+                let displayRoleText = '';
+                if (e.role === 'admin' || e.role === 'superadmin') {
+                    dailyRateText = '—';
+                    displayRoleText = 'Администратор';
+                } else if (e.warehouseRole) {
+                    dailyRateText = getWarehouseRoleRate(e.warehouseRole) + ' ₽/выход';
+                    displayRoleText = whRoleLabel + ' · ' + e.sourceLabel;
+                } else if (e.appRole === 'operator' || e.role === 'operator') {
+                    dailyRateText = '4000 ₽/выход';
+                    displayRoleText = 'Оператор · ' + e.sourceLabel;
+                } else {
+                    dailyRateText = 'сделка';
+                    displayRoleText = roleLabel + ' · ' + e.sourceLabel;
+                }
 
                 return `
                 <div class="employee-card">
@@ -1251,14 +1268,11 @@ async function loadAdminUsersTab() {
                                 ${isChecked ? '<span class="employee-online-dot" title="На смене"></span>' : ''}
                             </div>
                             <div class="employee-meta">
-                                <span class="employee-role-text">${roleLabel}</span>
-                                <span class="employee-role-text">·</span>
-                                <span class="employee-role-text">${whRoleLabel}</span>
-                                <span class="employee-role-text">·</span>
-                                <span class="employee-role-text">${e.sourceLabel}</span>
+                                <span class="employee-role-text">${displayRoleText}</span>
                             </div>
                             <div class="employee-meta">
                                 <span class="employee-login">@${esc(e.login)}</span>
+                                <span class="employee-rate">${dailyRateText}</span>
                                 ${stats ? `<span class="employee-today-stat">${stats.qty} шт (${stats.records} зап.)</span>` : ''}
                             </div>
                         </div>
@@ -1266,16 +1280,14 @@ async function loadAdminUsersTab() {
                     </div>
                     <div class="employee-actions">
                         <select class="role-select emp-role-select" data-user-id="${esc(e.id)}" data-db="${e.dbType}">
-                            <option value="user" ${e.role === 'user' ? 'selected' : ''}>Пользователь</option>
-                            <option value="admin" ${e.role === 'admin' ? 'selected' : ''}>Админ</option>
-                            <option value="superadmin" ${e.role === 'superadmin' ? 'selected' : ''}>Суперадмин</option>
-                        </select>
-                        <select class="role-select emp-whrole-select" data-user-id="${esc(e.id)}" data-db="${e.dbType}">
+                            <option value="admin" ${(e.role === 'admin' || e.role === 'superadmin') && !e.warehouseRole ? 'selected' : ''}>Админ</option>
+                            <option value="superadmin" ${e.role === 'superadmin' && !e.warehouseRole ? 'selected' : ''}>Суперадмин</option>
+                            <option value="user:packer" ${(e.role === 'user' || e.role === 'packer') && !e.warehouseRole ? 'selected' : ''}>Упаковщица</option>
+                            <option value="user:operator" ${e.role === 'operator' && !e.warehouseRole ? 'selected' : ''}>Оператор</option>
+                            <option value="probation" ${e.warehouseRole === 'probation' ? 'selected' : ''}>Кладовщик (Испытательный)</option>
                             <option value="standard" ${e.warehouseRole === 'standard' ? 'selected' : ''}>Кладовщик</option>
-                            <option value="senior" ${e.warehouseRole === 'senior' ? 'selected' : ''}>Старший</option>
-                            <option value="pro" ${e.warehouseRole === 'pro' ? 'selected' : ''}>PRO</option>
-                            <option value="admin" ${e.warehouseRole === 'admin' ? 'selected' : ''}>Админ склада</option>
-                            <option value="probation" ${e.warehouseRole === 'probation' ? 'selected' : ''}>Испытательный</option>
+                            <option value="pro" ${e.warehouseRole === 'pro' ? 'selected' : ''}>Кладовщик PRO</option>
+                            <option value="senior" ${e.warehouseRole === 'senior' ? 'selected' : ''}>Старший кладовщик</option>
                         </select>
                         <button class="employee-toggle-btn" data-user-id="${esc(e.id)}" data-db="${e.dbType}" data-active="${isActive}">${isActive ? ICONS.toggleOn : ICONS.toggleOff}</button>
                         <button class="employee-delete-btn" data-user-id="${esc(e.id)}" data-db="${e.dbType}" data-name="${esc(e.name)}">${ICONS.trash}</button>
@@ -1290,14 +1302,21 @@ async function loadAdminUsersTab() {
             document.querySelectorAll('.emp-role-select').forEach(select => {
                 select.addEventListener('change', async function () {
                     const db = this.dataset.db === 'warehouse' ? getWarehouseDB() : getDB();
-                    try { await db.collection('employees').doc(this.dataset.userId).update({ role: this.value }); invalidateEmployeesCache(); toast.success('Роль обновлена'); }
-                    catch (err) { toast.error('Ошибка: ' + err.message); }
-                });
-            });
-            document.querySelectorAll('.emp-whrole-select').forEach(select => {
-                select.addEventListener('change', async function () {
-                    const db = this.dataset.db === 'warehouse' ? getWarehouseDB() : getDB();
-                    try { await db.collection('employees').doc(this.dataset.userId).update({ warehouseRole: this.value }); invalidateEmployeesCache(); toast.success('Складская роль обновлена'); }
+                    const value = this.value;
+                    let updateData = {};
+                    if (value === 'admin') {
+                        updateData = { role: 'admin', warehouseRole: null, appRole: null };
+                    } else if (value === 'superadmin') {
+                        updateData = { role: 'superadmin', warehouseRole: null, appRole: null };
+                    } else if (value === 'user:packer') {
+                        updateData = { role: 'user', warehouseRole: null, appRole: 'packer' };
+                    } else if (value === 'user:operator') {
+                        updateData = { role: 'operator', warehouseRole: null, appRole: 'operator' };
+                    } else {
+                        // Кладовщик — одна из складских ролей
+                        updateData = { role: 'user', warehouseRole: value, appRole: 'warehouse' };
+                    }
+                    try { await db.collection('employees').doc(this.dataset.userId).update(updateData); invalidateEmployeesCache(); toast.success('Роль обновлена'); loadAdminUsersTab(); }
                     catch (err) { toast.error('Ошибка: ' + err.message); }
                 });
             });
@@ -1313,11 +1332,30 @@ async function loadAdminUsersTab() {
             });
             document.querySelectorAll('.employee-delete-btn').forEach(btn => {
                 btn.addEventListener('click', async function () {
-                    const db = this.dataset.db === 'warehouse' ? getWarehouseDB() : getDB();
-                    const confirmed = await confirmDelete(`Удалить "${this.dataset.name}"?`);
+                    const userId = this.dataset.userId;
+                    const name = this.dataset.name;
+                    const confirmed = await confirmDelete(`Удалить "${name}" из обеих баз? Это действие необратимо.`);
                     if (!confirmed) return;
-                    try { await db.collection('employees').doc(this.dataset.userId).delete(); invalidateEmployeesCache(); toast.success('Удалён'); loadAdminUsersTab(); }
-                    catch (err) { toast.error('Ошибка: ' + err.message); }
+                    try {
+                        // Удаляем из обеих баз — сотрудник может быть в любой из них
+                        const db1 = getDB();
+                        const db2 = getWarehouseDB();
+                        const results = await Promise.allSettled([
+                            db1.collection('employees').doc(userId).delete(),
+                            db2.collection('employees').doc(userId).delete()
+                        ]);
+                        const anySuccess = results.some(r => r.status === 'fulfilled');
+                        if (anySuccess) {
+                            invalidateEmployeesCache();
+                            toast.success('Сотрудник удалён');
+                            loadAdminUsersTab();
+                        } else {
+                            const errors = results.filter(r => r.status === 'rejected').map(r => r.reason.message).join('; ');
+                            toast.error('Ошибка удаления: ' + errors);
+                        }
+                    } catch (err) {
+                        toast.error('Ошибка: ' + err.message);
+                    }
                 });
             });
         }

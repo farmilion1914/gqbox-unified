@@ -447,6 +447,175 @@ body.dark-theme .checkin-section.checked,
     cursor: not-allowed;
 }
 
+/* ===== ФОРМА УПАКОВКИ ===== */
+.tab-card {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    margin-bottom: 12px;
+}
+
+.form-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 12px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.input-group .input-field {
+    margin-bottom: 0;
+}
+
+/* Триггеры настроек (склад, ИП) */
+.settings-triggers {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.settings-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--input-bg);
+    border-radius: 10px;
+    border: 1px solid var(--border-light);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.settings-trigger:active {
+    background: var(--surface-hover);
+}
+
+.settings-trigger.warning {
+    border-color: rgba(255, 149, 0, 0.3);
+    background: rgba(255, 149, 0, 0.05);
+}
+
+.trigger-label {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 1px;
+}
+
+.trigger-value {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.trigger-icon {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+/* Сообщение об ошибке/успехе */
+#msgPanel {
+    margin-top: 8px;
+}
+
+#msgPanel .success-msg {
+    background: rgba(52, 199, 89, 0.08);
+    border: 1px solid rgba(52, 199, 89, 0.2);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 0.75rem;
+    color: #34c759;
+    font-weight: 500;
+}
+
+#msgPanel .error-msg {
+    background: rgba(255, 59, 48, 0.08);
+    border: 1px solid rgba(255, 59, 48, 0.2);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 0.75rem;
+    color: #ff3b30;
+    font-weight: 500;
+}
+
+/* Кнопка "Добавить" */
+#addPackBtn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    border: none;
+    background: var(--primary);
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+#addPackBtn:active {
+    opacity: 0.8;
+    transform: scale(0.98);
+}
+
+/* ===== ВЫБОР ИП (чипсы) ===== */
+.ip-quick-select {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 4px 0;
+}
+
+.ip-chip {
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.ip-chip:active {
+    transform: scale(0.95);
+}
+
+.ip-chip.selected {
+    background: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
+}
+
+body.dark-theme .ip-chip.selected,
+[data-theme="dark"] .ip-chip.selected {
+    background: #0a84ff;
+    border-color: #0a84ff;
+}
+
+.ip-chip.none {
+    color: var(--text-muted);
+    border-style: dashed;
+}
+
+.ip-chip.none.selected {
+    color: #ffffff;
+    border-style: solid;
+}
+
 /* ===== АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ ===== */
 @media (max-width: 480px) {
     .salary-nav-title {

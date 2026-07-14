@@ -419,7 +419,7 @@ async function renderUserPanelHTML(user, todayStr) {
                             <div class="user-avatar" id="userAvatar">${esc(user.name).split(' ').map(w => w[0]).join('').slice(0, 2)}</div>
                             <div class="user-info">
                                 <div class="user-name" id="userName">${esc(user.name)}</div>
-                                <div class="user-role" id="salaryInline">0 ₽</div>
+                                <div class="user-role">${esc(getWarehouseRoleLabel(user.warehouseRole) || 'Кладовщик')}</div>
                             </div>
                         </div>
                         <div class="actions-block">
@@ -427,10 +427,13 @@ async function renderUserPanelHTML(user, todayStr) {
                             <button id="logoutBtnWH" class="header-btn danger" aria-label="Выход">✕</button>
                         </div>
                     </div>
-                    <!-- Сегментированный контрол Москва/Пушкино -->
-                    <div class="ios-segmented-control wh-segment-switch" style="margin:8px 0 0 0;">
-                        <button class="ios-segment active" data-wh="Москва">Москва</button>
-                        <button class="ios-segment" data-wh="Пушкино">Пушкино</button>
+                    <!-- Строка: зарплата слева + Москва/Пушкино справа -->
+                    <div class="wh-header-bottom">
+                        <div class="user-salary" id="salaryInline">0 ₽</div>
+                        <div class="ios-segmented-control wh-segment-switch">
+                            <button class="ios-segment active" data-wh="Москва">Москва</button>
+                            <button class="ios-segment" data-wh="Пушкино">Пушкино</button>
+                        </div>
                     </div>
                 </div>
                 <!-- Контейнеры табов -->
