@@ -253,6 +253,7 @@ body.dark-theme .btn-adjust,
     font-weight: 600;
     letter-spacing: 0.3px;
     min-width: 38px;
+    width: auto;
     height: 44px;
     border-radius: 10px;
     display: flex;
@@ -833,7 +834,9 @@ body.dark-theme .date-selector,
     font-size: 0.75rem;
     padding: 5px 4px;
     outline: none;
-    width: 105px;
+    width: 115px;
+    min-width: 115px;
+    flex-shrink: 0;
     color: #111827;
     text-align: center;
 }

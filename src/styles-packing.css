@@ -568,6 +568,12 @@ body.dark-theme .checkin-section.checked,
     transform: scale(0.98);
 }
 
+body.dark-theme #addPackBtn,
+[data-theme="dark"] #addPackBtn {
+    background: #0a84ff;
+    color: #ffffff;
+}
+
 /* ===== ВЫБОР ИП (чипсы) ===== */
 .ip-quick-select {
     display: flex;
