@@ -239,11 +239,19 @@ export function attachUserEvents() {
     if (checkinBtn) {
         checkinBtn.onclick = async () => {
             checkinBtn.disabled = true;
-            checkinBtn.textContent = '...';
+            checkinBtn.innerHTML = '✓';
             const result = await checkIn(session.id, session.name, session.appRole);
             if (result.success) {
                 toast.success('Отметка поставлена!');
-                window.renderApp();
+                // Обновляем блок отметки без перезагрузки всего интерфейса
+                const section = document.querySelector('.checkin-section');
+                if (section) {
+                    section.classList.add('checked');
+                    const info = section.querySelector('.checkin-info');
+                    if (info) info.textContent = '✓ Вы сегодня отметились';
+                }
+                checkinBtn.disabled = true;
+                checkinBtn.innerHTML = '✓';
             } else {
                 toast.warning(result.message);
                 checkinBtn.disabled = false;
