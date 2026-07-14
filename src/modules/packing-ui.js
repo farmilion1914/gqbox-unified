@@ -53,9 +53,10 @@ export async function renderUserPanel(user) {
 
     const triggers = `<div class="settings-triggers">${locationTrigger}${ipTrigger}</div>`;
 
-    const checkinHtml = `<div class="checkin-section${checkedIn ? ' checked' : ''}">
-        <div class="checkin-info">${checkedIn ? 'Вы сегодня отметились' : 'Отметьтесь о прибытии'}</div>
-        <button id="checkinBtn" class="checkin-btn" ${checkedIn ? 'disabled' : ''}>${checkedIn ? 'Отмечено' : 'Отметиться'}</button>
+    const isCheckedIn = checkedIn && checkedIn.checked;
+    const checkinHtml = `<div class="checkin-section${isCheckedIn ? ' checked' : ''}">
+        <div class="checkin-info">${isCheckedIn ? 'Вы сегодня отметились' : 'Отметьтесь о прибытии'}</div>
+        <button id="checkinBtn" class="checkin-btn" ${isCheckedIn ? 'disabled' : ''}>${isCheckedIn ? 'Отмечено' : 'Отметиться'}</button>
     </div>`;
 
     const packingContent = `
