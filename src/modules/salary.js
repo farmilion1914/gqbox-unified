@@ -434,50 +434,60 @@ let totalSalaryMonthOffset = 0;
 export async function calculateTotalSalaryForPeriod(startStr, endStr) {
     const emps = await getEmployees();
     const workers = emps.filter(e => e.role === 'user' || e.role === 'operator' || e.role === 'packer');
-    
+
+    // Вместо N+1 запросов (по одному на каждого сотрудника) делаем
+    // всего 2 запроса за период и группируем на клиенте (пункт 5)
+    const packSnap = await getDB()
+        .collection('pack_records')
+        .where('dateOnly', '>=', startStr)
+        .where('dateOnly', '<=', endStr)
+        .get();
+
+    const qtyByUser = {};
+    packSnap.docs.forEach(d => {
+        const data = d.data();
+        if (!data.userId) return;
+        qtyByUser[data.userId] = (qtyByUser[data.userId] || 0) + (data.quantity || 0);
+    });
+
+    const attSnap = await getDB()
+        .collection('attendance')
+        .where('date', '>=', startStr)
+        .where('date', '<=', endStr)
+        .get();
+
+    const attByUser = {};
+    attSnap.docs.forEach(d => {
+        const data = d.data();
+        if (!data.userId) return;
+        if (!attByUser[data.userId]) attByUser[data.userId] = new Set();
+        attByUser[data.userId].add(data.date);
+    });
+
     const byUser = {};
     let totalQty = 0;
     let totalPackerSalary = 0;
     let totalOperatorDays = 0;
     let totalOperatorEarnings = 0;
-    
+
     for (const emp of workers) {
-        const packSnapshot = await getDB()
-            .collection('pack_records')
-            .where('userId', '==', emp.id)
-            .where('dateOnly', '>=', startStr)
-            .where('dateOnly', '<=', endStr)
-            .get();
-        
-        const records = packSnapshot.docs.map(d => ({
-            id: d.id,
-            quantity: d.data().quantity
-        }));
-        
-        const empQty = records.reduce((s, r) => s + (r.quantity || 0), 0);
+        const empQty = qtyByUser[emp.id] || 0;
         totalQty += empQty;
-        
+
         const kv = getKV(empQty);
         const empSalary = 2500 * kv * empQty / 1000;
         totalPackerSalary += empSalary;
-        
+
         let operatorEarn = 0;
         let opDays = 0;
         if (emp.role === 'operator') {
             const dailyRate = emp.dailyRate || DEFAULT_DAILY_RATE;
-            const attSnapshot = await getDB()
-                .collection('attendance')
-                .where('userId', '==', emp.id)
-                .where('date', '>=', startStr)
-                .where('date', '<=', endStr)
-                .get();
-            
-            opDays = attSnapshot.docs.length;
+            opDays = attByUser[emp.id] ? attByUser[emp.id].size : 0;
             operatorEarn = opDays * dailyRate;
             totalOperatorDays += opDays;
             totalOperatorEarnings += operatorEarn;
         }
-        
+
         if (empQty > 0 || opDays > 0) {
             byUser[emp.id] = {
                 qty: empQty,

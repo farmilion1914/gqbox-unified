@@ -240,7 +240,7 @@ async function loadDashboard() {
     try {
         const { getTodayStr, getWeekStart, getWeekEnd, formatDateISO } = await import('../utils/dates.js');
         const { getEmployeesCached } = await import('./auth.js');
-        const { getAllRecords, calculateTodayStats } = await import('./packing.js');
+        const { getRecordsForRange, calculateTodayStats } = await import('./packing.js');
         const { getTodayAttendance } = await import('./attendance.js');
         const { getWarehouseDB } = await import('../services/firebase.js');
         const { sortDesc } = await import('../utils/helpers.js');
@@ -249,8 +249,12 @@ async function loadDashboard() {
         const weekStart = getWeekStart(today);
         const weekEnd = getWeekEnd(today);
 
+        // Грузим только записи текущей + прошлой недели (а не все 5000)
+        const prevWeekStart = getWeekStart(formatDateISO(new Date(new Date(weekStart).getTime() - 7 * 86400000)));
         const [employees, allRecords, todayAttendance] = await Promise.all([
-            getEmployeesCached(), getAllRecords(5000), getTodayAttendance()
+            getEmployeesCached(),
+            getRecordsForRange(prevWeekStart, weekEnd),
+            getTodayAttendance()
         ]);
 
         const packingStats = calculateTodayStats(allRecords);
@@ -260,7 +264,6 @@ async function loadDashboard() {
         const thisWeekRecords = allRecords.filter(r => r.dateOnly >= weekStart && r.dateOnly <= weekEnd);
         const thisWeekQty = thisWeekRecords.reduce((s, r) => s + r.quantity, 0);
 
-        const prevWeekStart = getWeekStart(formatDateISO(new Date(new Date(weekStart).getTime() - 7 * 86400000)));
         const prevWeekEnd = getWeekEnd(prevWeekStart);
         const prevWeekRecords = allRecords.filter(r => r.dateOnly >= prevWeekStart && r.dateOnly <= prevWeekEnd);
         const prevWeekQty = prevWeekRecords.reduce((s, r) => s + r.quantity, 0);
@@ -328,7 +331,9 @@ async function loadDashboard() {
         container.querySelectorAll('.collapsible-header').forEach(header => {
             header.addEventListener('click', function () { this.closest('.collapsible-section').classList.toggle('open'); });
         });
-        loadTotalSalary(0);
+        // Блок "Общая зарплата" грузим асинхронно (в фоне),
+        // чтобы не блокировать отрисовку остального дашборда (пункт 3, 7)
+        setTimeout(() => loadTotalSalary(0), 0);
     } catch (err) {
         container.innerHTML = `<div class="empty-state" style="color:#ff3b30;">Ошибка загрузки: ${esc(err.message)}</div>`;
     }
@@ -395,7 +400,7 @@ async function loadAdminPackingTab() {
     try {
         const { getTodayStr, getWeekStart, getWeekEnd, formatDateISO, formatDateShort, getDatesInRange } = await import('../utils/dates.js');
         const { getEmployeesCached } = await import('./auth.js');
-        const { getAllRecords, calculateTodayStats } = await import('./packing.js');
+        const { getRecordsForRange, calculateTodayStats } = await import('./packing.js');
         const { getWeekAttendance } = await import('./attendance.js');
         const { sortDesc } = await import('../utils/helpers.js');
 
@@ -403,8 +408,10 @@ async function loadAdminPackingTab() {
         const weekStart = getWeekStart(today);
         const weekEnd = getWeekEnd(today);
 
+        // Грузим только записи текущей + прошлой недели (а не все 5000)
+        const prevWeekStart = getWeekStart(formatDateISO(new Date(new Date(weekStart).getTime() - 7 * 86400000)));
         const [employees, allRecords, weekAttendance] = await Promise.all([
-            getEmployeesCached(), getAllRecords(5000), getWeekAttendance()
+            getEmployeesCached(), getRecordsForRange(prevWeekStart, weekEnd), getWeekAttendance()
         ]);
 
         const todayStats = calculateTodayStats(allRecords);
@@ -421,7 +428,6 @@ async function loadAdminPackingTab() {
             return { date, label: formatDateShort(new Date(date)), qty: dayRecords.reduce((s, r) => s + r.quantity, 0), isToday: date === today };
         });
 
-        const prevWeekStart = getWeekStart(formatDateISO(new Date(new Date(weekStart).getTime() - 7 * 86400000)));
         const prevWeekEnd = getWeekEnd(prevWeekStart);
         const prevWeekRecords = allRecords.filter(r => r.dateOnly >= prevWeekStart && r.dateOnly <= prevWeekEnd);
         const prevWeekQty = prevWeekRecords.reduce((s, r) => s + r.quantity, 0);
@@ -541,9 +547,9 @@ async function loadAdminPackingTab() {
             header.addEventListener('click', function () { this.closest('.collapsible-section').classList.toggle('open'); });
         });
 
-        initAdminPackingSalary();
-        initAdminPhotos();
-        initAttendanceEvents();
+        // Тяжёлые блоки (зарплата упаковщиц, фото) грузим асинхронно в фоне,
+        // чтобы не блокировать отрисовку вкладки (пункт 7)
+        setTimeout(() => { initAdminPackingSalary(); initAdminPhotos(); initAttendanceEvents(); }, 0);
 
     } catch (err) {
         container.innerHTML = `<div class="empty-state" style="color:#ff3b30;">Ошибка: ${esc(err.message)}</div>`;

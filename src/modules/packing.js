@@ -4,14 +4,19 @@ import { collection, queryWhere, addDoc, deleteDoc, getDoc, serverTimestamp, get
 import { getTodayStr, formatDateISO } from '../utils/dates.js';
 import { getKV, calcSalary } from '../config.js';
 
-// Кэш всех записей (TTL 30с) — снижает число тяжёлых запросов к Firestore
+// Кэш всех записей (TTL 5 мин) — снижает число тяжёлых запросов к Firestore
 let _allRecordsCache = null;
 let _allRecordsCacheTime = 0;
-const ALL_RECORDS_TTL = 30000;
+const ALL_RECORDS_TTL = 300000;
+
+// Кэш записей за период (TTL 5 мин) — используется дашбордом и вкладкой упаковки
+let _rangeCache = {};
+const RANGE_TTL = 300000;
 
 export function invalidateAllRecordsCache() {
     _allRecordsCache = null;
     _allRecordsCacheTime = 0;
+    _rangeCache = {};
 }
 
 /**
@@ -80,7 +85,7 @@ export async function deletePackRecord(id) {
 }
 
 /**
- * Получение всех записей (с лимитом)
+ * Получение всех записей (с лимитом) — оставлено для обратной совместимости
  */
 export async function getAllRecords(limitCount = 2000) {
     if (_allRecordsCache && Date.now() - _allRecordsCacheTime < ALL_RECORDS_TTL) {
@@ -109,6 +114,43 @@ export async function getAllRecords(limitCount = 2000) {
     });
     _allRecordsCache = records;
     _allRecordsCacheTime = Date.now();
+    return records;
+}
+
+/**
+ * Получение записей за диапазон дат (вместо выгрузки всех 5000).
+ * Фильтрует по dateOnly, а не по limit, чтобы не тащить лишнее по сети.
+ * Кэшируется на 5 минут (RANGE_TTL).
+ */
+export async function getRecordsForRange(startStr, endStr) {
+    const cacheKey = startStr + '_' + endStr;
+    const cached = _rangeCache[cacheKey];
+    if (cached && Date.now() - cached.time < RANGE_TTL) {
+        return cached.records;
+    }
+    const snapshot = await getDB()
+        .collection('pack_records')
+        .where('dateOnly', '>=', startStr)
+        .where('dateOnly', '<=', endStr)
+        .orderBy('dateOnly')
+        .get();
+    
+    const records = snapshot.docs.map(d => {
+        const data = d.data();
+        return {
+            id: d.id,
+            article: data.article,
+            quantity: data.quantity,
+            marketplace: data.marketplace,
+            locationDisplay: data.locationDisplay,
+            ip: data.ip,
+            dateOnly: data.dateOnly,
+            dateStr: data.dateStr,
+            userId: data.userId,
+            userName: data.userName
+        };
+    });
+    _rangeCache[cacheKey] = { records, time: Date.now() };
     return records;
 }
 

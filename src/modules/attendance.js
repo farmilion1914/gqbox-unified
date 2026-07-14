@@ -73,8 +73,14 @@ export async function hasCheckedIn(userId) {
 
 export async function getTodayAttendance() {
     const today = getTodayStr();
-    const items = await queryWhere('attendance', 'date', '==', today);
-    return items.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    const snapshot = await getDB()
+        .collection('attendance')
+        .where('date', '==', today)
+        .orderBy('time')
+        .limit(1000)
+        .get();
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 }
 
 export async function loadAttendanceData(startDate, endDate) {
@@ -91,7 +97,15 @@ export async function loadAttendanceData(startDate, endDate) {
 export async function getWeekAttendance() {
     const monday = formatDateISO(getWeekMonday(new Date()));
     const sunday = formatDateISO(getWeekSunday(new Date()));
-    return loadAttendanceData(monday, sunday);
+    const snapshot = await getDB()
+        .collection('attendance')
+        .where('date', '>=', monday)
+        .where('date', '<=', sunday)
+        .orderBy('date')
+        .orderBy('time')
+        .limit(5000)
+        .get();
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 export async function getAttendanceForPeriod(startDate, endDate) {
