@@ -288,13 +288,19 @@ export function attachUserEvents() {
         };
     }
 
-    // Фото по артикулу
+    // Фото по артикулу (с debounce — ждём окончания ввода)
     const articleInput = document.getElementById('articleInput');
     if (articleInput) {
+        let ppTimer = null;
         articleInput.addEventListener('input', function () {
             const barcode = this.value.trim();
+            if (ppTimer) clearTimeout(ppTimer);
             if (barcode) {
-                if (window.showPP) window.showPP(barcode);
+                ppTimer = setTimeout(function() {
+                    if (window.showPP) window.showPP(barcode);
+                }, 400);
+            } else {
+                if (window.showPP) window.showPP('');
             }
         });
     }

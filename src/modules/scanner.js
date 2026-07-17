@@ -60,11 +60,12 @@ function startSc() {
                     if (navigator.vibrate) navigator.vibrate(50);
                     var ai = document.getElementById('articleInput');
                     var bc = dt.trim();
+                    // Находим article по barcode (для поля ввода)
                     findBc(bc).then(function(art) {
                         if (ai) ai.value = art;
-                        // После установки артикула — ищем фото (сработает input-событие)
-                        showPP(art || bc);
                     });
+                    // Передаём CAM barcode (не article!) — фото ищется по barcode
+                    showPP(bc);
                     var qi = document.getElementById('qtyInput');
                     if (qi) {
                         qi.focus();
@@ -111,82 +112,88 @@ function stopSc() {
 }
 
 // ===== ПОИСК АРТИКУЛА ПО ШТРИХКОДУ =====
+// barcode -> article (из коллекции barcodes)
 async function findBc(code) {
     var bc = code.trim();
     try {
-        if (window.db) {
-            var s = await window.db
-                .collection('barcodes')
-                .where('barcode', '==', bc)
-                .limit(1)
-                .get();
-            if (!s.empty) return s.docs[0].data().article;
-        } else if (window.firebase && window.firebase.firestore) {
-            var db2 = window.firebase.firestore();
-            var s2 = await db2
-                .collection('barcodes')
-                .where('barcode', '==', bc)
-                .limit(1)
-                .get();
-            if (!s2.empty) return s2.docs[0].data().article;
-        }
+        var db = window.db || (window.firebase && window.firebase.firestore && window.firebase.firestore());
+        if (!db) return bc;
+        var s = await db
+            .collection('barcodes')
+            .where('barcode', '==', bc)
+            .limit(1)
+            .get();
+        if (!s.empty) return s.docs[0].data().article;
     } catch (e) {
         console.log('findBc error:', e);
     }
     return bc;
 }
 
-// ===== ПОИСК ФОТО ТОВАРА ПО ШТРИХКОДУ ИЛИ АРТИКУЛУ =====
+// ===== ПОИСК ШТРИХКОДА ПО АРТИКУЛУ =====
+// article -> barcode (обратный поиск, для ручного ввода)
+async function findBcByArticle(article) {
+    var art = (article || '').trim().toUpperCase();
+    if (!art) return null;
+    try {
+        var db = window.db || (window.firebase && window.firebase.firestore && window.firebase.firestore());
+        if (!db) return null;
+        var s = await db
+            .collection('barcodes')
+            .where('article', '==', art)
+            .limit(1)
+            .get();
+        if (!s.empty) return s.docs[0].data().barcode;
+    } catch (e) {
+        console.log('findBcByArticle error:', e);
+    }
+    return null;
+}
+
+// ===== ПОИСК ФОТО ТОВАРА ПО ШТРИХКОДУ =====
 async function getPP(bc) {
     if (!bc) return null;
+    var db = window.db || (window.firebase && window.firebase.firestore && window.firebase.firestore());
+    if (!db) return null;
+
+    var q = bc.trim();
+    // Фото в product_photos привязано к полю barcode
     try {
-        var db3 = null;
-        if (window.db) db3 = window.db;
-        else if (window.firebase && window.firebase.firestore) db3 = window.firebase.firestore();
-        if (!db3) return null;
-        var q = bc.trim();
-        // Сначала ищем по barcode
-        var s1 = await db3
+        var s1 = await db
             .collection('product_photos')
             .where('barcode', '==', q)
             .limit(1)
             .get();
         if (!s1.empty) return s1.docs[0].data();
-        // Если не нашли — ищем по article
-        var s2 = await db3
-            .collection('product_photos')
-            .where('article', '==', q.toUpperCase())
-            .limit(1)
-            .get();
-        if (!s2.empty) return s2.docs[0].data();
-        // Ещё вариант — article без upper
-        var s3 = await db3
-            .collection('product_photos')
-            .where('article', '==', q)
-            .limit(1)
-            .get();
-        return s3.empty ? null : s3.docs[0].data();
-    } catch (e) {
-        return null;
-    }
+    } catch (e) { console.log('getPP barcode err:', e); }
+
+    return null;
 }
 
 // ===== ПОКАЗ ФОТО ТОВАРА (ПРЕВЬЮ) =====
-async function showPP(barcode) {
+async function showPP(value) {
     var pe = document.getElementById('productPhoto');
     var ph = document.getElementById('productPhotoPlaceholder');
     if (!pe || !ph) return;
-    if (!barcode) {
+    if (!value) {
         pe.classList.remove('show');
         pe.src = '';
         ph.classList.remove('show');
         return;
     }
-    var r = await getPP(barcode);
+
+    // Сначала пробуем как есть (barcode при сканировании)
+    var r = await getPP(value);
+
+    // Если не нашли — возможно ввели article, резолвим в barcode
+    if (!r) {
+        var bc = await findBcByArticle(value);
+        if (bc) r = await getPP(bc);
+    }
+
     if (r && r.photoData) {
         pe.src = r.photoData;
         pe.classList.add('show');
-        // По клику на превью — открываем модалку
         pe.onclick = function(e) {
             e.preventDefault();
             openPM(r.photoData);
@@ -213,7 +220,6 @@ function openPM(src) {
     var scale = 1, startDist = 0, startScale = 1;
     var posX = 0, posY = 0, startX = 0, startY = 0;
 
-    // Pinch zoom
     m.addEventListener('touchstart', function(e) {
         if (e.touches.length === 2) {
             startDist = Math.hypot(
@@ -243,7 +249,6 @@ function openPM(src) {
         }
     }, { passive: false });
 
-    // Double-tap to reset
     var lastTap = 0;
     m.addEventListener('touchend', function(e) {
         var now = Date.now();
