@@ -136,7 +136,7 @@ async function findBc(code) {
     return bc;
 }
 
-// ===== ПОИСК ФОТО ТОВАРА ПО ШТРИХКОДУ/АРТИКУЛУ =====
+// ===== ПОИСК ФОТО ТОВАРА ПО ШТРИХКОДУ ИЛИ АРТИКУЛУ =====
 async function getPP(bc) {
     if (!bc) return null;
     try {
@@ -144,12 +144,28 @@ async function getPP(bc) {
         if (window.db) db3 = window.db;
         else if (window.firebase && window.firebase.firestore) db3 = window.firebase.firestore();
         if (!db3) return null;
-        var s = await db3
+        var q = bc.trim();
+        // Сначала ищем по barcode
+        var s1 = await db3
             .collection('product_photos')
-            .where('barcode', '==', bc.trim())
+            .where('barcode', '==', q)
             .limit(1)
             .get();
-        return s.empty ? null : s.docs[0].data();
+        if (!s1.empty) return s1.docs[0].data();
+        // Если не нашли — ищем по article
+        var s2 = await db3
+            .collection('product_photos')
+            .where('article', '==', q.toUpperCase())
+            .limit(1)
+            .get();
+        if (!s2.empty) return s2.docs[0].data();
+        // Ещё вариант — article без upper
+        var s3 = await db3
+            .collection('product_photos')
+            .where('article', '==', q)
+            .limit(1)
+            .get();
+        return s3.empty ? null : s3.docs[0].data();
     } catch (e) {
         return null;
     }
