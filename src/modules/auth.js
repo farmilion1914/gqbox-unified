@@ -50,14 +50,30 @@ export function invalidateEmployeesCache() {
 // ===== ВХОД (ищет в ОБЕИХ базах) =====
 export async function loginUser(login, password) {
     const hashed = await hashPassword(password);
-    // Сначала ищем в базе упаковщиц
+    // Ищем по хешу (новые записи) или по plain text (старые записи)
     let snap = await getDB().collection('employees')
         .where('login', '==', login.trim())
-        .where('password', '==', hashed)
+        .where('password', '==', password.trim())
         .limit(1)
         .get();
 
-    // Если не нашли — ищем в базе кладовщиков
+    // Если не нашли по plain text — пробуем по хешу
+    if (snap.empty) {
+        snap = await getDB().collection('employees')
+            .where('login', '==', login.trim())
+            .where('password', '==', hashed)
+            .limit(1)
+            .get();
+    }
+
+    // Если не нашли в базе упаковщиц — ищем в базе кладовщиков
+    if (snap.empty) {
+        snap = await getWarehouseDB().collection('employees')
+            .where('login', '==', login.trim())
+            .where('password', '==', password.trim())
+            .limit(1)
+            .get();
+    }
     if (snap.empty) {
         snap = await getWarehouseDB().collection('employees')
             .where('login', '==', login.trim())

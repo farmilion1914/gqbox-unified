@@ -14,16 +14,17 @@ export function initFirebase() {
         return;
     }
 
-    // Проект упаковщиц
+// Проект упаковщиц
     if (!_appPacking) {
         _appPacking = firebase.initializeApp(FIREBASE_CONFIG, 'packing');
         _dbPacking = firebase.firestore(_appPacking);
+        window.db = _dbPacking; // для совместимости с глобальным scanner.js
         try {
             _dbPacking.enablePersistence({ synchronizeTabs: true }).catch(() => {});
         } catch (e) {}
     }
 
-    // Проект кладовщиков
+// Проект кладовщиков
     if (!_appWarehouse) {
         _appWarehouse = firebase.initializeApp(FIREBASE_CONFIG_WAREHOUSE, 'warehouse');
         _dbWarehouse = firebase.firestore(_appWarehouse);
