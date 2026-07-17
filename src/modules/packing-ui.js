@@ -294,7 +294,7 @@ export function attachUserEvents() {
         articleInput.addEventListener('input', function () {
             const barcode = this.value.trim();
             if (barcode) {
-                showPP(barcode);
+                if (window.showPP) window.showPP(barcode);
             }
         });
     }
