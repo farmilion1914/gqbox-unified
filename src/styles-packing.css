@@ -682,6 +682,12 @@ body.dark-theme #addPackBtn,
     color: #ffffff;
 }
 
+body.dark-theme .scan-btn,
+[data-theme="dark"] .scan-btn {
+    background: #0a84ff;
+    border-color: #0a84ff;
+}
+
 /* ===== ВЫБОР ИП (чипсы) ===== */
 .ip-quick-select {
     display: flex;
