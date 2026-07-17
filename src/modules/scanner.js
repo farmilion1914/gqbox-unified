@@ -62,8 +62,9 @@ function startSc() {
                     var bc = dt.trim();
                     findBc(bc).then(function(art) {
                         if (ai) ai.value = art;
+                        // После установки артикула — ищем фото (сработает input-событие)
+                        showPP(art || bc);
                     });
-                    showPP(bc);
                     var qi = document.getElementById('qtyInput');
                     if (qi) {
                         qi.focus();
@@ -135,7 +136,7 @@ async function findBc(code) {
     return bc;
 }
 
-// ===== ПОИСК ФОТО ТОВАРА ПО ШТРИХКОДУ =====
+// ===== ПОИСК ФОТО ТОВАРА ПО ШТРИХКОДУ/АРТИКУЛУ =====
 async function getPP(bc) {
     if (!bc) return null;
     try {
@@ -154,7 +155,7 @@ async function getPP(bc) {
     }
 }
 
-// ===== ПОКАЗ ФОТО ТОВАРА =====
+// ===== ПОКАЗ ФОТО ТОВАРА (ПРЕВЬЮ) =====
 async function showPP(barcode) {
     var pe = document.getElementById('productPhoto');
     var ph = document.getElementById('productPhotoPlaceholder');
@@ -169,7 +170,11 @@ async function showPP(barcode) {
     if (r && r.photoData) {
         pe.src = r.photoData;
         pe.classList.add('show');
-        pe.onclick = function() { openPM(r.photoData); };
+        // По клику на превью — открываем модалку
+        pe.onclick = function(e) {
+            e.preventDefault();
+            openPM(r.photoData);
+        };
         ph.classList.remove('show');
     } else {
         pe.classList.remove('show');
@@ -178,11 +183,14 @@ async function showPP(barcode) {
     }
 }
 
-// ===== ОТКРЫТИЕ ФОТО В ПОЛНОЭКРАННОМ РЕЖИМЕ =====
+// ===== ПОЛНОЭКРАННЫЙ ПРОСМОТР ФОТО (МОДАЛКА) =====
 function openPM(src) {
+    var existing = document.querySelector('.photo-modal');
+    if (existing) existing.remove();
+
     var m = document.createElement('div');
     m.className = 'photo-modal';
-    m.innerHTML = '<button class="photo-modal-close">✕</button><img src="' + src + '">';
+    m.innerHTML = '<button class="photo-modal-close">✕</button><button class="photo-modal-delete">🗑️</button><img src="' + src + '">';
     m.addEventListener('click', function(e) {
         if (e.target === m || e.target.classList.contains('photo-modal-close')) {
             m.style.opacity = '0';
