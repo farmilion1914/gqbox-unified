@@ -1,0 +1,53 @@
+rules_version = '2';
+
+// ===========================================================
+//  БАЗА КЛАДОВЩИКОВ (warehouse-b6b75)
+// ===========================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===== СОТРУДНИКИ (employees) =====
+    match /employees/{userId} {
+      allow read: if request.auth != null;
+      // Запись роли/ставки/блокировки — только админ склада.
+      allow write: if isAdmin()
+                      && !isSelfRoleEscalation(userId);
+    }
+
+    // ===== ЛОГИ ОПЕРАЦИЙ (work_logs) =====
+    match /work_logs/{id} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null;
+      allow delete: if isAdmin();
+    }
+
+    // ===== ФОТО ПАЛЛЕТ (pallet_photos) =====
+    match /pallet_photos/{id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if isAdmin();
+    }
+
+    // ===== ПРОЧИЕ (логи и т.п.) =====
+    match /{document=**} {
+      allow read: if request.auth != null && isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ===== ФУНКЦИИ-ПОМОЩНИКИ =====
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/employees/$(request.auth.uid))
+        && (get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role in ['admin', 'superadmin'];
+    }
+
+    // Запрет само-эскалации: нельзя менять свою роль/ставку/блокировку
+    function isSelfRoleEscalation(targetUserId) {
+      return targetUserId == request.auth.uid
+        && ('role' in request.resource.data
+            || 'warehouseRole' in request.resource.data
+            || 'active' in request.resource.data
+            || 'dailyRate' in request.resource.data);
+    }
+  }
+}

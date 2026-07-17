@@ -1,161 +1,200 @@
-// ==================== МОДУЛЬ СКАНЕРА ШТРИХКОДОВ ====================
+// ==================== СКАНЕР ШТРИХКОДОВ ====================
+// Global script — НЕ модуль. Загружается через <script> в index.html
 
-import { toast } from '../services/toast.js';
-import { playScanSound } from '../utils/helpers.js';
-import { getDB } from '../services/firebase.js';
+// Зависимости: Html5Qrcode (CDN), firebase (CDN), Toast (из toast.js)
 
-let qrScanner = null;
+let qr = null;
 
-async function startScanner() {
-    const overlay = document.getElementById('scannerOverlay');
-    const view = document.getElementById('scannerView');
-    
-    if (!overlay || !view) return;
-    
+// ===== ЗВУКОВЫЕ ЭФФЕКТЫ =====
+function playBeep(f, d, t) {
+    try {
+        var ctx = new (window.AudioContext || window.webkitAudioContext)();
+        var o = ctx.createOscillator();
+        var g = ctx.createGain();
+        o.type = t || 'sine';
+        o.frequency.value = f;
+        g.gain.value = 0.3;
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + d);
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.start();
+        o.stop(ctx.currentTime + d);
+    } catch (e) {}
+}
+
+function playScanSound() {
+    playBeep(660, 0.08, 'square');
+}
+
+// ===== ЗАПУСК СКАНЕРА =====
+function startSc() {
+    var ov = document.getElementById('scannerOverlay'),
+        vw = document.getElementById('scannerView');
+    if (!ov || !vw) return;
     if (!navigator.mediaDevices?.getUserMedia) {
-        toast.warning('Камера недоступна');
+        if (window.Toast && window.Toast.warning) window.Toast.warning('Камера недоступна');
         return;
     }
-    
-    overlay.classList.add('active');
-    view.innerHTML = '';
-    
-    if (qrScanner && qrScanner.isScanning) {
-        await stopScanner();
+    ov.classList.add('active');
+    vw.innerHTML = '';
+    if (qr && qr.isScanning) {
+        qr.stop().then(function() {
+            qr = null;
+            initNS();
+        }).catch(function() {
+            qr = null;
+            initNS();
+        });
+    } else {
+        initNS();
     }
-    
-    try {
-        qrScanner = new Html5Qrcode("scannerView");
-        
-        await qrScanner.start(
-            { facingMode: "environment" },
-            { fps: 10, qrbox: { width: 250, height: 160 } },
-            async (decodedText) => {
-                playScanSound();
-                if (navigator.vibrate) navigator.vibrate(50);
-                
-                const articleInput = document.getElementById('articleInput');
-                if (articleInput) {
-                    const article = await findBarcode(decodedText.trim());
-                    articleInput.value = article;
-                }
-                
-                await showProductPhoto(decodedText.trim());
-                
-                const qtyInput = document.getElementById('qtyInput');
-                if (qtyInput) {
-                    qtyInput.focus();
-                    qtyInput.select();
-                }
-                
-                await stopScanner();
-            },
-            () => {} // onScanFailure
-        );
-        
-        const scanBtn = document.getElementById('scanBtn');
-        if (scanBtn) {
-            scanBtn.classList.add('scanning');
-            scanBtn.textContent = '⏹';
-        }
-    } catch (error) {
-        toast.error('Ошибка камеры');
-        await stopScanner();
-    }
-}
 
-async function stopScanner() {
-    if (qrScanner) {
+    function initNS() {
         try {
-            await qrScanner.stop();
-        } catch (e) {}
-        qrScanner = null;
+            qr = new Html5Qrcode("scannerView");
+            qr.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 160 } },
+                function(dt) {
+                    playScanSound();
+                    if (navigator.vibrate) navigator.vibrate(50);
+                    var ai = document.getElementById('articleInput');
+                    var bc = dt.trim();
+                    findBc(bc).then(function(art) {
+                        if (ai) ai.value = art;
+                    });
+                    showPP(bc);
+                    var qi = document.getElementById('qtyInput');
+                    if (qi) {
+                        qi.focus();
+                        qi.select();
+                    }
+                    stopSc();
+                },
+                function() {}
+            ).then(function() {
+                var sb = document.getElementById('scanBtn');
+                if (sb) {
+                    sb.classList.add('scanning');
+                    sb.textContent = '⏹';
+                }
+            }).catch(function(err) {
+                console.error('Html5Qrcode.start error:', err);
+                if (window.Toast && window.Toast.error) window.Toast.error('Ошибка сканера');
+                stopSc();
+            });
+        } catch (e) {
+            console.error('Html5Qrcode constructor error:', e);
+            if (window.Toast && window.Toast.error) window.Toast.error('Ошибка камеры');
+            stopSc();
+        }
     }
-    
-    const overlay = document.getElementById('scannerOverlay');
-    if (overlay) overlay.classList.remove('active');
-    
-    const scanBtn = document.getElementById('scanBtn');
-    if (scanBtn) {
-        scanBtn.classList.remove('scanning');
-        scanBtn.textContent = '📷';
-    }
-    
-    const view = document.getElementById('scannerView');
-    if (view) view.innerHTML = '';
 }
 
-async function findBarcode(barcode) {
+// ===== ОСТАНОВКА СКАНЕРА =====
+function stopSc() {
+    if (qr) {
+        qr.stop().catch(function() {}).finally(function() {
+            qr = null;
+        });
+    }
+    var o = document.getElementById('scannerOverlay');
+    if (o) o.classList.remove('active');
+    var sb = document.getElementById('scanBtn');
+    if (sb) {
+        sb.classList.remove('scanning');
+        sb.textContent = '📷';
+    }
+    var v = document.getElementById('scannerView');
+    if (v) v.innerHTML = '';
+}
+
+// ===== ПОИСК АРТИКУЛА ПО ШТРИХКОДУ =====
+async function findBc(code) {
+    var bc = code.trim();
     try {
-        const snapshot = await getDB()
-            .collection('barcodes')
-            .where('barcode', '==', barcode)
-            .limit(1)
-            .get();
-        
-        if (!snapshot.empty) {
-            return snapshot.docs[0].data().article;
+        if (window.db) {
+            var s = await window.db
+                .collection('barcodes')
+                .where('barcode', '==', bc)
+                .limit(1)
+                .get();
+            if (!s.empty) return s.docs[0].data().article;
+        } else if (window.firebase && window.firebase.firestore) {
+            var db2 = window.firebase.firestore();
+            var s2 = await db2
+                .collection('barcodes')
+                .where('barcode', '==', bc)
+                .limit(1)
+                .get();
+            if (!s2.empty) return s2.docs[0].data().article;
         }
     } catch (e) {
-        // Игнорируем ошибки
+        console.log('findBc error:', e);
     }
-    
-    return barcode;
+    return bc;
 }
 
-async function showProductPhoto(barcode) {
-    const photoEl = document.getElementById('productPhoto');
-    const placeholderEl = document.getElementById('productPhotoPlaceholder');
-    
-    if (!photoEl || !placeholderEl) return;
-    
-    if (!barcode) {
-        photoEl.classList.remove('show');
-        photoEl.src = '';
-        placeholderEl.classList.remove('show');
-        return;
-    }
-    
+// ===== ПОИСК ФОТО ТОВАРА ПО ШТРИХКОДУ =====
+async function getPP(bc) {
+    if (!bc) return null;
     try {
-        const snapshot = await getDB()
+        var db3 = null;
+        if (window.db) db3 = window.db;
+        else if (window.firebase && window.firebase.firestore) db3 = window.firebase.firestore();
+        if (!db3) return null;
+        var s = await db3
             .collection('product_photos')
-            .where('barcode', '==', barcode.trim())
+            .where('barcode', '==', bc.trim())
             .limit(1)
             .get();
-        
-        if (!snapshot.empty) {
-            const data = snapshot.docs[0].data();
-            if (data.photoData) {
-                photoEl.src = data.photoData;
-                photoEl.classList.add('show');
-                photoEl.onclick = () => openPhotoModal(data.photoData);
-                placeholderEl.classList.remove('show');
-                return;
-            }
-        }
-    } catch (e) {}
-    
-    photoEl.classList.remove('show');
-    photoEl.src = '';
-    placeholderEl.classList.add('show');
+        return s.empty ? null : s.docs[0].data();
+    } catch (e) {
+        return null;
+    }
 }
 
-function openPhotoModal(src) {
-    const modal = document.createElement('div');
-    modal.className = 'photo-modal';
-    modal.innerHTML = `
-        <button class="photo-modal-close">✕</button>
-        <img src="${src}" alt="Фото товара">
-    `;
-    
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal || e.target.classList.contains('photo-modal-close')) {
-            modal.style.opacity = '0';
-            setTimeout(() => modal.remove(), 180);
+// ===== ПОКАЗ ФОТО ТОВАРА =====
+async function showPP(barcode) {
+    var pe = document.getElementById('productPhoto');
+    var ph = document.getElementById('productPhotoPlaceholder');
+    if (!pe || !ph) return;
+    if (!barcode) {
+        pe.classList.remove('show');
+        pe.src = '';
+        ph.classList.remove('show');
+        return;
+    }
+    var r = await getPP(barcode);
+    if (r && r.photoData) {
+        pe.src = r.photoData;
+        pe.classList.add('show');
+        pe.onclick = function() { openPM(r.photoData); };
+        ph.classList.remove('show');
+    } else {
+        pe.classList.remove('show');
+        pe.src = '';
+        ph.classList.add('show');
+    }
+}
+
+// ===== ОТКРЫТИЕ ФОТО В ПОЛНОЭКРАННОМ РЕЖИМЕ =====
+function openPM(src) {
+    var m = document.createElement('div');
+    m.className = 'photo-modal';
+    m.innerHTML = '<button class="photo-modal-close">✕</button><img src="' + src + '">';
+    m.addEventListener('click', function(e) {
+        if (e.target === m || e.target.classList.contains('photo-modal-close')) {
+            m.style.opacity = '0';
+            setTimeout(function() { m.remove(); }, 180);
         }
     });
-    
-    document.body.appendChild(modal);
+    document.body.appendChild(m);
 }
 
-export { startScanner, stopScanner, findBarcode, showProductPhoto, openPhotoModal };
+// Экспортируем в глобальную область (window)
+window.startSc = startSc;
+window.stopSc = stopSc;
+window.findBc = findBc;
+window.showPP = showPP;
+window.openPM = openPM;

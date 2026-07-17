@@ -9,7 +9,6 @@ import { checkIn, hasCheckedIn, getOperatorTodayEarning } from './attendance.js'
 import { addPackRecord, getUserRecords, deletePackRecord, calculateTodayStats } from './packing.js';
 import { getUserLocation, saveUserLocation, getUserIP, saveUserIP } from './location.js';
 import { initSalary, refreshSalaryView, attachSalaryEvents } from './salary.js';
-import { startScanner, stopScanner, showProductPhoto } from './scanner.js';
 import { showLocationPopup, showIpPopup, confirmDelete } from '../ui/popups.js';
 import { Theme, refreshApp } from '../ui/pwa.js';
 import { getDailyRate } from './auth.js';
@@ -72,6 +71,8 @@ export async function renderUserPanel(user) {
                 </div>
                 <div class="input-field"><label>Количество</label><input type="number" id="qtyInput" min="1" placeholder="Кол-во"></div>
             </div>
+            <img id="productPhoto" class="product-photo" alt="Фото товара">
+            <div id="productPhotoPlaceholder" class="product-photo-placeholder">📷 Фото товара появится после сканирования</div>
             <button id="addPackBtn">Добавить</button>
             <div id="msgPanel"></div>
         </div>`;
@@ -227,12 +228,39 @@ export function attachUserEvents() {
         };
     }
 
-    // Сканер
+    // Сканер — toggle кнопка
     const scanBtn = document.getElementById('scanBtn');
-    if (scanBtn) scanBtn.onclick = (e) => { e.preventDefault(); startScanner(); };
+    if (scanBtn) {
+        scanBtn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (scanBtn.classList.contains('scanning')) {
+                stopSc();
+            } else {
+                startSc();
+            }
+        };
+    }
 
+    // Закрытие сканера по кнопке
     const closeScannerBtn = document.getElementById('closeScannerBtn');
-    if (closeScannerBtn) closeScannerBtn.onclick = (e) => { e.preventDefault(); stopScanner(); };
+    if (closeScannerBtn) {
+        closeScannerBtn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            stopSc();
+        };
+    }
+
+    // Закрытие сканера по ESC
+    document.addEventListener('keydown', function escHandler(e) {
+        if (e.key === 'Escape') {
+            const ov = document.getElementById('scannerOverlay');
+            if (ov && ov.classList.contains('active')) {
+                stopSc();
+            }
+        }
+    });
 
     // Отметка
     const checkinBtn = document.getElementById('checkinBtn');
@@ -266,7 +294,7 @@ export function attachUserEvents() {
         articleInput.addEventListener('input', function () {
             const barcode = this.value.trim();
             if (barcode) {
-                showProductPhoto(barcode);
+                showPP(barcode);
             }
         });
     }

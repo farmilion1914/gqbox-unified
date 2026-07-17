@@ -28,10 +28,10 @@
     <div id="appRoot"></div>
 
     <!-- Сканер штрихкодов (общий) -->
-    <div id="scannerOverlay" style="display:none;">
+    <div id="scannerOverlay">
         <div id="scannerView"></div>
         <div class="scanner-hint">Наведите камеру на штрихкод</div>
-        <button id="closeScannerBtn">✕</button>
+        <button id="closeScannerBtn">Закрыть</button>
     </div>
 
     <!-- Тосты (общие) -->
@@ -65,6 +65,10 @@
         </div>
     </div>
 
+    
+    <!-- Глобальный скрипт сканера (не модуль) — загружается до app.js -->
+    <script src="src/modules/scanner.js"></script>
+    
     <script type="module" src="src/app.js"></script>
 </body>
 </html>

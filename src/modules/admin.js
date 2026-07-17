@@ -1,7 +1,7 @@
 // ==================== ЕДИНАЯ АДМИН-ПАНЕЛЬ ====================
 
 import { toast } from '../services/toast.js';
-import { esc } from '../utils/helpers.js';
+import { esc, escAttr } from '../utils/helpers.js';
 import { getSession } from './auth.js';
 
 let currentAdminTab = 'dashboard';
@@ -803,7 +803,8 @@ async function loadAdminPhotosTab() {
                         html += `<div style="background:var(--surface);border-radius:12px;overflow:hidden;border:1px solid var(--border);">`;
                         
                         if (photos.length > 0) {
-                            html += `<img src="${esc(photos[0].data || photos[0].dataUrl)}" style="width:100%;aspect-ratio:1;object-fit:cover;cursor:pointer;" onclick="window.open('${esc(photos[0].data || photos[0].dataUrl)}','_blank')" alt="фото паллеты">`;
+                            const photoUrl = photos[0].data || photos[0].dataUrl;
+                            html += `<img src="${escAttr(photoUrl)}" style="width:100%;aspect-ratio:1;object-fit:cover;cursor:pointer;" onclick="window.open('${escAttr(photoUrl)}','_blank')" alt="фото паллеты">`;
                         } else {
                             html += `<div style="width:100%;aspect-ratio:1;background:var(--input-bg);display:flex;align-items:center;justify-content:center;color:var(--text-secondary);font-size:0.7rem;">Нет фото</div>`;
                         }
@@ -1296,7 +1297,7 @@ async function loadAdminUsersTab() {
                             <option value="senior" ${e.warehouseRole === 'senior' ? 'selected' : ''}>Старший кладовщик</option>
                         </select>
                         <button class="employee-toggle-btn" data-user-id="${esc(e.id)}" data-db="${e.dbType}" data-active="${isActive}">${isActive ? ICONS.toggleOn : ICONS.toggleOff}</button>
-                        <button class="employee-delete-btn" data-user-id="${esc(e.id)}" data-db="${e.dbType}" data-name="${esc(e.name)}">${ICONS.trash}</button>
+                        <button class="employee-delete-btn" data-user-id="${escAttr(e.id)}" data-db="${escAttr(e.dbType)}" data-name="${escAttr(e.name)}">${ICONS.trash}</button>
                     </div>
                 </div>`;
             }).join('');

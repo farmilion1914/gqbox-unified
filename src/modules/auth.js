@@ -3,6 +3,7 @@
 import { getDB, getWarehouseDB } from '../services/firebase.js';
 import { sessionCache } from '../services/cache.js';
 import { SESSION_KEY } from '../config.js';
+import { hashPassword } from '../utils/crypto.js';
 
 // ===== СЕССИЯ =====
 export function saveSession(user) {
@@ -48,10 +49,11 @@ export function invalidateEmployeesCache() {
 
 // ===== ВХОД (ищет в ОБЕИХ базах) =====
 export async function loginUser(login, password) {
+    const hashed = await hashPassword(password);
     // Сначала ищем в базе упаковщиц
     let snap = await getDB().collection('employees')
         .where('login', '==', login.trim())
-        .where('password', '==', password)
+        .where('password', '==', hashed)
         .limit(1)
         .get();
 
@@ -59,7 +61,7 @@ export async function loginUser(login, password) {
     if (snap.empty) {
         snap = await getWarehouseDB().collection('employees')
             .where('login', '==', login.trim())
-            .where('password', '==', password)
+            .where('password', '==', hashed)
             .limit(1)
             .get();
     }
@@ -139,6 +141,21 @@ export async function restoreSession() {
             clearSession();
             return null;
         }
+        // Перепроверяем актуальную роль и блокировку (защита от
+        // подделки сессии в localStorage и отключённых сотрудников)
+        const data = doc.data();
+        if (data.active === false) {
+            clearSession();
+            return null;
+        }
+        const freshRole = data.role;
+        const freshIsAdmin = (freshRole === 'admin' || freshRole === 'superadmin');
+        if (session.isAdmin !== freshIsAdmin || session.role !== freshRole) {
+            session.role = freshRole;
+            session.isAdmin = freshIsAdmin;
+            session.isSuperAdmin = (freshRole === 'superadmin');
+            saveSession(session);
+        }
         return session;
     } catch (e) {
         clearSession();
@@ -165,10 +182,11 @@ export async function registerUser(login, password, name, role) {
 
     const appRole = role || 'packer';
     const isWarehouse = appRole === 'warehouse';
+    const hashed = await hashPassword(password);
 
     await getDB().collection('employees').add({
         login: login.trim(),
-        password,
+        password: hashed,
         name: name.trim(),
         role: isWarehouse ? 'user' : (appRole === 'operator' ? 'operator' : 'user'),
         active: true,

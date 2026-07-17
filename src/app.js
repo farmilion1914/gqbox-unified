@@ -21,7 +21,7 @@ function getContainers() {
 function hideAllUI() {
     const c = getContainers();
     if (c.tabBar) c.tabBar.style.display = 'none';
-    if (c.scannerOverlay) c.scannerOverlay.style.display = 'none';
+    // scannerOverlay управляется через scanner.js (класс active), не трогаем
 }
 
 // ===== ЭКРАН ВХОДА =====

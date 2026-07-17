@@ -11,15 +11,19 @@ export function escHtml(s) {
 }
 
 /**
- * Экранирование для атрибутов HTML
+ * Экранирование для атрибутов HTML (вкл. кавычки)
+ * Используем \u0026 (код '&') вместо литерала '&',
+ * чтобы автоформаттер не декодировал сущности обратно.
  */
+const AMP = String.fromCharCode(38); // '&' без литерала, чтобы форматтер не декодировал
 export function escAttr(s) {
     if (!s) return '';
-    return s.replace(/&/g, '&')
-        .replace(/"/g, '"')
-        .replace(/</g, '<')
-        .replace(/>/g, '>')
-        .replace(/'/g, '&#39;');
+    return String(s)
+        .replace(/&/g, AMP + 'amp;')
+        .replace(/"/g, AMP + 'quot;')
+        .replace(/'/g, AMP + '#39;')
+        .replace(/</g, AMP + 'lt;')
+        .replace(/>/g, AMP + 'gt;');
 }
 
 /**
