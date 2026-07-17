@@ -190,14 +190,60 @@ function openPM(src) {
 
     var m = document.createElement('div');
     m.className = 'photo-modal';
-    m.innerHTML = '<button class="photo-modal-close">✕</button><button class="photo-modal-delete">🗑️</button><img src="' + src + '">';
+    m.innerHTML = '<button class="photo-modal-close">✕</button><img src="' + src + '">';
+    document.body.appendChild(m);
+
+    var img = m.querySelector('img');
+    var scale = 1, startDist = 0, startScale = 1;
+    var posX = 0, posY = 0, startX = 0, startY = 0;
+
+    // Pinch zoom
+    m.addEventListener('touchstart', function(e) {
+        if (e.touches.length === 2) {
+            startDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            startScale = scale;
+        } else if (e.touches.length === 1) {
+            startX = e.touches[0].clientX - posX;
+            startY = e.touches[0].clientY - posY;
+        }
+    }, { passive: false });
+
+    m.addEventListener('touchmove', function(e) {
+        e.preventDefault();
+        if (e.touches.length === 2) {
+            var dist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            scale = Math.min(5, Math.max(0.5, startScale * dist / startDist));
+            img.style.transform = 'scale(' + scale + ') translate(' + posX + 'px,' + posY + 'px)';
+        } else if (e.touches.length === 1) {
+            posX = e.touches[0].clientX - startX;
+            posY = e.touches[0].clientY - startY;
+            img.style.transform = 'scale(' + scale + ') translate(' + posX + 'px,' + posY + 'px)';
+        }
+    }, { passive: false });
+
+    // Double-tap to reset
+    var lastTap = 0;
+    m.addEventListener('touchend', function(e) {
+        var now = Date.now();
+        if (now - lastTap < 300 && e.changedTouches.length === 1) {
+            scale = 1; posX = 0; posY = 0;
+            img.style.transform = 'scale(1)';
+        }
+        lastTap = now;
+    });
+
     m.addEventListener('click', function(e) {
         if (e.target === m || e.target.classList.contains('photo-modal-close')) {
             m.style.opacity = '0';
             setTimeout(function() { m.remove(); }, 180);
         }
     });
-    document.body.appendChild(m);
 }
 
 // Экспортируем в глобальную область (window)
