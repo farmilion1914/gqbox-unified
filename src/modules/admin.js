@@ -895,11 +895,13 @@ async function initAdminPackingSalary() {
             </select>
             <div class="salary-month-selector" style="margin:0;">
                 <select id="pckSalaryMode" class="input-field" style="width:auto;">
+                    <option value="day">День</option>
                     <option value="month">Месяц</option>
                     <option value="week">Неделя</option>
                 </select>
-                <input type="month" class="input-field" id="pckSalaryMonth" value="${today.slice(0, 7)}" style="width:auto;">
+                <input type="month" class="input-field" id="pckSalaryMonth" value="${today.slice(0, 7)}" style="display:none;width:auto;">
                 <input type="date" class="input-field" id="pckSalaryWeek" value="${today}" style="display:none;width:auto;">
+                <input type="date" class="input-field" id="pckSalaryDay" value="${today}" style="width:auto;">
                 <button id="pckSalaryBtn" class="btn-primary">Показать</button>
             </div>
         </div>
@@ -914,22 +916,36 @@ async function initAdminPackingSalary() {
 
     if (modeSelect) {
         modeSelect.addEventListener('change', function () {
-            if (monthInput) monthInput.style.display = this.value === 'month' ? 'inline' : 'none';
-            if (weekInput) weekInput.style.display = this.value === 'week' ? 'inline' : 'none';
+            const mode = this.value;
+            if (monthInput) monthInput.style.display = mode === 'month' ? 'inline' : 'none';
+            if (weekInput) weekInput.style.display = mode === 'week' ? 'inline' : 'none';
+            const dayInput = document.getElementById('pckSalaryDay');
+            if (dayInput) dayInput.style.display = mode === 'day' ? 'inline' : 'none';
         });
     }
 
     if (pckSalaryBtn) {
         pckSalaryBtn.onclick = async () => {
-            const mode = modeSelect?.value || 'month';
-            const val = mode === 'month' ? monthInput?.value : weekInput?.value;
+            const mode = modeSelect?.value || 'day';
+            const dayInput = document.getElementById('pckSalaryDay');
+            let val;
+            if (mode === 'day') {
+                val = dayInput?.value;
+            } else if (mode === 'month') {
+                val = monthInput?.value;
+            } else {
+                val = weekInput?.value;
+            }
             const selectedUserId = empSelect?.value || '';
             const resultDiv = document.getElementById('pckSalaryResult');
             if (!resultDiv) return;
             resultDiv.innerHTML = '<div class="loading-spinner">Загрузка...</div>';
 
             let startDate, endDate;
-            if (mode === 'month') {
+            if (mode === 'day') {
+                startDate = val;
+                endDate = val;
+            } else if (mode === 'month') {
                 const range = getMonthRange(new Date(val + '-01'));
                 startDate = range.start;
                 endDate = range.end;
