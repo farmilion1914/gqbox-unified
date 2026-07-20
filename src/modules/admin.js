@@ -871,80 +871,7 @@ async function loadAdminPhotosTab() {
     }
 }
 
-// ===== ОТЧЁТЫ СКЛАДА (АДМИН) =====
-async function initAdminWarehouseReports() {
-    const container = document.getElementById('adminWarehouseReports');
-    if (!container) return;
-    const { getWarehouseDB } = await import('../services/firebase.js');
-    const { getTodayStr } = await import('../utils/dates.js');
-    
-    const today = getTodayStr();
-    container.innerHTML = `
-        <div class="salary-month-selector" style="flex-wrap:wrap;">
-            <input type="date" class="input-field" id="reportStartDate" value="${today}" style="width:auto;">
-            <input type="date" class="input-field" id="reportEndDate" value="${today}" style="width:auto;">
-            <button id="reportGenerateBtn" class="btn-primary">Сформировать</button>
-        </div>
-        <div id="adminReportResult"></div>
-    `;
-    
-    document.getElementById('reportGenerateBtn').onclick = async () => {
-        const start = document.getElementById('reportStartDate')?.value;
-        const end = document.getElementById('reportEndDate')?.value;
-        const resultDiv = document.getElementById('adminReportResult');
-        if (!start || !end) { toast.warning('Выберите даты'); return; }
-        resultDiv.innerHTML = '<div class="loading-spinner">Загрузка...</div>';
-        
-        try {
-            const snap = await getWarehouseDB().collection('work_logs')
-                .where('date', '>=', start)
-                .where('date', '<=', end)
-                .get();
-            
-            const stats = {
-                received: 0, collected: 0, shipped: 0, laid: 0,
-                accepted: 0, shippedPush: 0, unloaded: 0, reworked: 0,
-                daysMoscow: new Set(), daysPushkino: new Set()
-            };
-            
-            snap.docs.forEach(d => {
-                const log = d.data();
-                if (log.action === 'Работал на складе') {
-                    if (log.warehouse === 'Москва') stats.daysMoscow.add(log.date);
-                    else stats.daysPushkino.add(log.date);
-                }
-                const qty = log.quantity || 0;
-                if (log.action?.indexOf('Принял коробов') >= 0) stats.received += qty;
-                else if (log.action?.indexOf('Собрал паллеты') >= 0) stats.collected += qty;
-                else if (log.action?.indexOf('Отгрузил паллеты') >= 0) stats.shipped += qty;
-                else if (log.action?.indexOf('Выкладка товара') >= 0) stats.laid += qty;
-                else if (log.action?.indexOf('Принял с осн. склада') >= 0) stats.accepted += qty;
-                else if (log.action?.indexOf('Отгрузил на осн. склад') >= 0) stats.shippedPush += qty;
-                else if (log.action?.indexOf('Выгрузка фуры') >= 0) stats.unloaded += qty;
-                else if (log.action?.indexOf('Перебрал паллеты') >= 0) stats.reworked += qty;
-            });
-            
-            const cards = [
-                { val: stats.daysMoscow.size, lbl: 'Дней в Москве' },
-                { val: stats.daysPushkino.size, lbl: 'Дней в Пушкино' },
-                { val: stats.received, lbl: 'Принято коробов' },
-                { val: stats.collected, lbl: 'Собрано паллет' },
-                { val: stats.shipped, lbl: 'Отгружено паллет' },
-                { val: stats.laid, lbl: 'Выкладка (шт)' },
-                { val: stats.accepted, lbl: 'Принято с осн. (кор)' },
-                { val: stats.shippedPush, lbl: 'Отгруж. на осн. (кор)' },
-                { val: stats.unloaded, lbl: 'Выгрузка фуры (кор)' },
-                { val: stats.reworked, lbl: 'Перебрано (кор)' }
-            ];
-            
-            resultDiv.innerHTML = '<div class="ios-tile-grid">' + cards.map(c =>
-                `<div class="ios-tile"><div class="tile-value">${c.val}</div><div class="tile-label">${c.lbl}</div></div>`
-            ).join('') + '</div>';
-        } catch (e) {
-            resultDiv.innerHTML = `<div class="empty-state" style="color:#ff3b30;">Ошибка: ${esc(e.message)}</div>`;
-        }
-    };
-}
+// ОТЧЁТЫ СКЛАДА перенесены в admin-warehouse.js (initAdminWarehouseReports)
 
 // ===== ЗАРПЛАТА УПАКОВЩИЦ (как у кладовщиков — все сразу) =====
 async function initAdminPackingSalary() {
@@ -1076,7 +1003,7 @@ async function loadAdminWarehouseTab() {
 
     try {
         const { getTodayStr, getWeekRange } = await import('../utils/dates.js');
-        const { loadAdminLogs } = await import('./admin-warehouse.js');
+        const { loadAdminLogs, initAdminWarehouseReports } = await import('./admin-warehouse.js');
 
         container.innerHTML = `
             <div class="collapsible-section open">

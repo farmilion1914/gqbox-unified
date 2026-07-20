@@ -855,3 +855,195 @@ body.dark-theme .salary-detail-row,
 [data-theme="dark"] .salary-detail-row {
     border-bottom-color: rgba(255, 255, 255, 0.06);
 }
+
+/* ===== ОТЧЁТЫ СКЛАДА ===== */
+.report-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.report-date-row {
+    display: flex;
+    gap: 6px;
+}
+
+.report-section-title {
+    font-weight: 700;
+    font-size: 0.72rem;
+    color: var(--primary);
+    padding: 6px 0 2px;
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: 2px;
+}
+
+.report-result-card {
+    background: var(--surface);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.report-result-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.report-result-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.report-result-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.report-result-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.report-result-period {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+}
+
+.report-result-total {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary);
+    white-space: nowrap;
+}
+
+.report-result-details {
+    padding: 8px 12px;
+}
+
+.report-result-footer {
+    padding: 8px 12px 12px;
+}
+
+/* ===== ЛОГИ С ФИЛЬТРОМ ===== */
+.logs-filter-bar {
+    margin-bottom: 8px;
+}
+
+.ios-log-item.action-collect {
+    border-left: 3px solid #34c759;
+}
+
+.ios-log-item.action-lay {
+    border-left: 3px solid #007aff;
+}
+
+.ios-log-item.action-receive {
+    border-left: 3px solid #ff9500;
+}
+
+.ios-log-item.action-ship {
+    border-left: 3px solid #ff2d55;
+}
+
+.log-warehouse-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--input-bg);
+    font-size: 0.6rem;
+    color: var(--text-secondary);
+    margin-left: 4px;
+}
+
+.log-qty-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(0, 122, 255, 0.1);
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin-left: 4px;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px 0;
+    margin-top: 8px;
+}
+
+.page-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.page-btn.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+.page-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.page-btn.page-nav {
+    font-size: 0.65rem;
+    width: 28px;
+    height: 28px;
+}
+
+.page-info {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    margin-left: 4px;
+}
+
+/* ===== КНОПКИ-ФИЛЬТРЫ (быстрый период) ===== */
+.btn-adjust {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.7rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.btn-adjust.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
