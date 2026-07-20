@@ -1156,18 +1156,84 @@ async function loadAdminWarehouseTab() {
 
                 if (userIds.length === 0) { resultDiv.innerHTML = '<div class="empty-state">Нет данных</div>'; return; }
 
+                // Детализированная карточка для КАЖДОГО кладовщика
                 let total = 0;
-                let whtml = '<div class="salary-employee-card"><div class="salary-items">';
+                let html = '<div class="salary-employee-card">';
+                
                 userIds.sort((a, b) => (salaryByUser[b].total || 0) - (salaryByUser[a].total || 0));
                 userIds.forEach(uid => {
                     const emp = empMap[uid] || { name: 'Неизвестный', warehouseRole: 'standard' };
                     const data = salaryByUser[uid];
                     total += data.total;
-                    whtml += `<div class="salary-item"><span class="salary-item-label">${esc(emp.name)}</span><span class="salary-item-value">${data.total.toLocaleString('ru-RU')} ₽</span></div>`;
+                    
+                    // Строки детализации
+                    let detailRows = '';
+                    
+                    // Выходы по складам
+                    if (data.attendance) {
+                        const whNames = Object.keys(data.attendance);
+                        whNames.forEach(wh => {
+                            const a = data.attendance[wh];
+                            detailRows += `
+                                <div class="salary-detail-row">
+                                    <span class="salary-detail-label">Выходы (${esc(wh)})</span>
+                                    <span class="salary-detail-value">${a.days} дн. · ${a.amount.toLocaleString('ru-RU')} ₽</span>
+                                </div>`;
+                        });
+                    }
+                    
+                    // Сборка паллет
+                    if (data.kpi && data.kpi.collect && data.kpi.collect.qty > 0) {
+                        detailRows += `
+                            <div class="salary-detail-row">
+                                <span class="salary-detail-label">Собрано паллет</span>
+                                <span class="salary-detail-value">${data.kpi.collect.qty.toLocaleString('ru-RU')} шт · ${data.kpi.collect.amount.toLocaleString('ru-RU')} ₽</span>
+                            </div>`;
+                    }
+                    
+                    // Выкладка товара
+                    if (data.kpi && data.kpi.lay && data.kpi.lay.qty > 0) {
+                        detailRows += `
+                            <div class="salary-detail-row">
+                                <span class="salary-detail-label">Выкладка товара</span>
+                                <span class="salary-detail-value">${data.kpi.lay.qty.toLocaleString('ru-RU')} ед. · ${data.kpi.lay.amount.toLocaleString('ru-RU')} ₽</span>
+                            </div>`;
+                    }
+                    
+                    if (!detailRows) {
+                        detailRows = '<div class="salary-detail-row" style="color:var(--text-secondary);font-size:0.7rem;">Нет операций</div>';
+                    }
+                    
+                    html += `
+                        <div class="wh-salary-emp-card collapsible-section">
+                            <div class="collapsible-header wh-salary-header">
+                                <div class="wh-salary-name">
+                                    <span class="wh-salary-avatar">${(emp.name || '?')[0].toUpperCase()}</span>
+                                    <span>${esc(emp.name)}</span>
+                                </div>
+                                <div class="wh-salary-total">${data.total.toLocaleString('ru-RU')} ₽</div>
+                                <span class="collapsible-icon">${ICONS.chevronDown}</span>
+                            </div>
+                            <div class="collapsible-content">
+                                <div><div class="collapsible-body wh-salary-details">
+                                    ${detailRows}
+                                </div></div>
+                            </div>
+                        </div>`;
                 });
-                whtml += `<div class="salary-divider"></div><div class="salary-total"><span>Итого</span><span class="salary-total-value">${total.toLocaleString('ru-RU')} ₽</span></div>`;
-                whtml += '</div></div>';
-                resultDiv.innerHTML = whtml;
+                
+                html += `
+                    <div class="salary-divider"></div>
+                    <div class="salary-total"><span>Итого</span><span class="salary-total-value">${total.toLocaleString('ru-RU')} ₽</span></div>
+                </div>`;
+                resultDiv.innerHTML = html;
+                
+                // Привязываем сворачивание для карточек кладовщиков
+                resultDiv.querySelectorAll('.wh-salary-header').forEach(header => {
+                    header.addEventListener('click', function () {
+                        this.closest('.wh-salary-emp-card').classList.toggle('open');
+                    });
+                });
             };
         }
     } catch (err) {

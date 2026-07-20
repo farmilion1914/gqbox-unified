@@ -1,4 +1,6 @@
 // ==================== РАБОТА С ДАТАМИ ====================
+// ВСЕ функции работают с локальным временем, без UTC/часовых поясов
+// Даты передаются как строки "YYYY-MM-DD"
 
 /**
  * Получение строки даты в формате YYYY-MM-DD (локально)
@@ -53,64 +55,111 @@ export function formatMonthYear(date) {
 }
 
 /**
- * Получение понедельника текущей недели
+ * Парсинг строки YYYY-MM-DD в компоненты
+ * Возвращает { year, month, day } — числа
+ * Важно: month = 1..12 (не 0..11)
  */
-export function getWeekMonday(date) {
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = (day === 0 ? -6 : 1 - day);
-    d.setDate(d.getDate() + diff);
-    d.setHours(0, 0, 0, 0);
-    return d;
+function parseDate(dateStr) {
+    const parts = dateStr.split('-');
+    return {
+        year: parseInt(parts[0], 10),
+        month: parseInt(parts[1], 10),
+        day: parseInt(parts[2], 10)
+    };
 }
 
 /**
- * Получение воскресенья недели (по понедельнику)
+ * Сборка даты из компонентов
  */
-export function getWeekSunday(monday) {
-    const d = new Date(monday);
-    d.setDate(d.getDate() + 6);
-    d.setHours(23, 59, 59, 999);
-    return d;
+function makeDateStr(year, month, day) {
+    const m = String(month).padStart(2, '0');
+    const d = String(day).padStart(2, '0');
+    return `${year}-${m}-${d}`;
 }
 
 /**
- * Начало недели (псевдоним для getWeekMonday)
+ * День недели по строке YYYY-MM-DD
+ * Возвращает: 1=пн, 2=вт, 3=ср, 4=чт, 5=пт, 6=сб, 7=вс
+ * Использует формулу Зеллера для конгруэнтности
+ */
+function getDayOfWeek(dateStr) {
+    const { year, month, day } = parseDate(dateStr);
+    // Формула Зеллера для григорианского календаря
+    // Корректируем месяц: январь и февраль — 13-й и 14-й месяц предыдущего года
+    let m = month;
+    let y = year;
+    if (m <= 2) { m += 12; y--; }
+    const q = day;
+    const K = y % 100;
+    const J = Math.floor(y / 100);
+    const h = (q + Math.floor(13 * (m + 1) / 5) + K + Math.floor(K / 4) + Math.floor(J / 4) + 5 * J) % 7;
+    // h: 0=сб, 1=вс, 2=пн, 3=вт, 4=ср, 5=чт, 6=пт
+    // конвертируем в 1=пн..7=вс
+    return ((h + 5) % 7) + 1;
+}
+
+/**
+ * Сдвиг даты на N дней (чисто строковая операция)
+ */
+export function shiftDate(dateStr, days) {
+    if (days === 0) return dateStr;
+    const { year, month, day } = parseDate(dateStr);
+    // Используем Date для сдвига (это безопасно, так как мы работаем с локальным временем)
+    const d = new Date(year, month - 1, day);
+    d.setDate(d.getDate() + days);
+    return formatDateISO(d);
+}
+
+/**
+ * Получение понедельника недели по любой дате недели
+ * @param {string} dateStr - любая дата в формате YYYY-MM-DD
+ * @returns {string} YYYY-MM-DD понедельника
+ */
+export function getWeekMonday(dateStr) {
+    const dow = getDayOfWeek(dateStr); // 1=пн..7=вс
+    const daysToMonday = 1 - dow; // пн=1 → 0, вт=2 → -1, ср=3 → -2, ..., вс=7 → -6
+    return shiftDate(dateStr, daysToMonday);
+}
+
+/**
+ * Получение воскресенья недели
+ * @param {string} mondayStr - понедельник в формате YYYY-MM-DD
+ * @returns {string} YYYY-MM-DD воскресенья
+ */
+export function getWeekSunday(mondayStr) {
+    return shiftDate(mondayStr, 6);
+}
+
+/**
+ * Начало недели (понедельник)
  */
 export function getWeekStart(dateStr) {
-    return formatDateISO(getWeekMonday(new Date(dateStr)));
+    return getWeekMonday(dateStr);
 }
 
 /**
- * Конец недели (псевдоним для getWeekSunday по понедельнику)
+ * Конец недели (воскресенье)
  */
 export function getWeekEnd(dateStr) {
-    const monday = getWeekMonday(new Date(dateStr));
-    return formatDateISO(getWeekSunday(monday));
+    const monday = getWeekMonday(dateStr);
+    return getWeekSunday(monday);
 }
 
 /**
  * Начало месяца
  */
 export function getMonthStart(dateStr) {
-    const d = new Date(dateStr);
-    return formatDateISO(new Date(d.getFullYear(), d.getMonth(), 1));
+    const { year, month } = parseDate(dateStr);
+    return makeDateStr(year, month, 1);
 }
 
 /**
  * Конец месяца
  */
 export function getMonthEnd(dateStr) {
-    const d = new Date(dateStr);
-    return formatDateISO(new Date(d.getFullYear(), d.getMonth() + 1, 0));
-}
-
-/**
- * Сдвиг даты на N дней
- */
-export function shiftDate(dateStr, days) {
-    const d = new Date(dateStr);
-    d.setDate(d.getDate() + days);
+    const { year, month } = parseDate(dateStr);
+    // Следующий месяц, 0-й день = последний день текущего
+    const d = new Date(year, month, 0);
     return formatDateISO(d);
 }
 
@@ -118,8 +167,10 @@ export function shiftDate(dateStr, days) {
  * Сдвиг месяца на N месяцев
  */
 export function shiftMonth(dateStr, months) {
-    const d = new Date(dateStr);
-    return formatDateISO(new Date(d.getFullYear(), d.getMonth() + months, 1));
+    const { year, month, day } = parseDate(dateStr);
+    const d = new Date(year, month - 1, 1);
+    d.setMonth(d.getMonth() + months);
+    return formatDateISO(new Date(d.getFullYear(), d.getMonth(), Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate())));
 }
 
 /**
@@ -127,12 +178,14 @@ export function shiftMonth(dateStr, months) {
  */
 export function getDatesInRange(startStr, endStr) {
     const result = [];
-    const start = new Date(startStr);
-    const end = new Date(endStr);
-    const cur = new Date(start);
-    while (cur <= end) {
-        result.push(formatDateISO(cur));
-        cur.setDate(cur.getDate() + 1);
+    let cur = startStr;
+    while (cur <= endStr) {
+        result.push(cur);
+        // Сдвигаем на 1 день
+        const { year, month, day } = parseDate(cur);
+        const d = new Date(year, month - 1, day);
+        d.setDate(d.getDate() + 1);
+        cur = formatDateISO(d);
     }
     return result;
 }
@@ -178,22 +231,18 @@ export function getMonthName(monthStr) {
  * Диапазон недели по дате
  */
 export function getWeekRange(date) {
-    const monday = getWeekMonday(date);
+    const monday = getWeekMonday(formatDateISO(date));
     const sunday = getWeekSunday(monday);
-    return {
-        start: formatDateISO(monday),
-        end: formatDateISO(sunday)
-    };
+    return { start: monday, end: sunday };
 }
 
 /**
  * Диапазон месяца по дате
  */
 export function getMonthRange(date) {
-    const y = date.getFullYear();
-    const m = date.getMonth();
-    return {
-        start: formatDateISO(new Date(y, m, 1)),
-        end: formatDateISO(new Date(y, m + 1, 0))
-    };
+    const ys = date.getFullYear();
+    const ms = date.getMonth();
+    const start = formatDateISO(new Date(ys, ms, 1));
+    const end = formatDateISO(new Date(ys, ms + 1, 0));
+    return { start, end };
 }

@@ -755,3 +755,103 @@ body.dark-theme .ip-chip.selected,
         padding: 6px 1px;
     }
 }
+
+/* ===== ДЕТАЛИЗИРОВАННЫЕ КАРТОЧКИ ЗАРПЛАТЫ КЛАДОВЩИКОВ ===== */
+.wh-salary-emp-card {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    margin-bottom: 6px;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease;
+}
+
+.wh-salary-emp-card:active {
+    box-shadow: var(--shadow-sm);
+}
+
+.wh-salary-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.wh-salary-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text);
+    min-width: 0;
+}
+
+.wh-salary-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.wh-salary-total {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--primary);
+    white-space: nowrap;
+}
+
+.wh-salary-details {
+    padding: 4px 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.salary-detail-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border-light);
+    font-size: 0.72rem;
+    gap: 8px;
+}
+
+.salary-detail-row:last-child {
+    border-bottom: none;
+}
+
+.salary-detail-label {
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.salary-detail-value {
+    font-weight: 600;
+    color: var(--text);
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* Темная тема для карточек */
+body.dark-theme .wh-salary-emp-card,
+[data-theme="dark"] .wh-salary-emp-card {
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+body.dark-theme .salary-detail-row,
+[data-theme="dark"] .salary-detail-row {
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+}
