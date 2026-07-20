@@ -13,6 +13,8 @@ export function getTodayStr() {
  * Форматирование даты в ISO (YYYY-MM-DD)
  */
 export function formatDateISO(date) {
+    if (!date) return '';
+    if (!(date instanceof Date)) return String(date);
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
@@ -21,18 +23,53 @@ export function formatDateISO(date) {
 
 /**
  * Форматирование даты для отображения (DD.MM.YYYY)
+ * Принимает строку (YYYY-MM-DD), Date, Timestamp Firestore, число
  */
-export function formatDate(dateStr) {
-    if (!dateStr) return '';
-    const parts = dateStr.split('-');
-    if (parts.length === 3) return `${parts[2]}.${parts[1]}.${parts[0]}`;
-    return dateStr;
+export function formatDate(d) {
+    if (!d && d !== 0) return '';
+    
+    // Если это Firestore Timestamp
+    if (d.toDate && typeof d.toDate === 'function') {
+        return formatDateFromDateObj(d.toDate());
+    }
+    
+    // Если это объект Date
+    if (d instanceof Date) {
+        return formatDateFromDateObj(d);
+    }
+    
+    // Если это число (миллисекунды)
+    if (typeof d === 'number') {
+        return formatDateFromDateObj(new Date(d));
+    }
+    
+    // Если это строка YYYY-MM-DD
+    if (typeof d === 'string') {
+        const parts = d.split('-');
+        if (parts.length === 3) {
+            return `${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
+        return d;
+    }
+    
+    return String(d);
+}
+
+function formatDateFromDateObj(date) {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}.${month}.${year}`;
 }
 
 /**
  * Короткая дата (DD.MM)
  */
 export function formatDateShort(date) {
+    if (!date) return '';
+    if (date.toDate && typeof date.toDate === 'function') date = date.toDate();
+    if (typeof date === 'string') date = new Date(date);
+    if (!(date instanceof Date) || isNaN(date.getTime())) return String(date);
     const d = String(date.getDate()).padStart(2, '0');
     const m = String(date.getMonth() + 1).padStart(2, '0');
     return `${d}.${m}`;
@@ -43,6 +80,10 @@ export function formatDateShort(date) {
  */
 const MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 export function formatDateFull(date) {
+    if (!date) return '';
+    if (date.toDate && typeof date.toDate === 'function') date = date.toDate();
+    if (typeof date === 'string') date = new Date(date);
+    if (!(date instanceof Date) || isNaN(date.getTime())) return String(date);
     return `${date.getDate()} ${MONTHS[date.getMonth()]}`;
 }
 
@@ -50,6 +91,10 @@ export function formatDateFull(date) {
  * Месяц Год (для заголовков)
  */
 export function formatMonthYear(date) {
+    if (!date) return '';
+    if (date.toDate && typeof date.toDate === 'function') date = date.toDate();
+    if (typeof date === 'string') date = new Date(date);
+    if (!(date instanceof Date) || isNaN(date.getTime())) return String(date);
     const months = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
     return `${months[date.getMonth()]} ${date.getFullYear()}`;
 }
@@ -60,11 +105,20 @@ export function formatMonthYear(date) {
  * Важно: month = 1..12 (не 0..11)
  */
 function parseDate(dateStr) {
-    const parts = dateStr.split('-');
+    if (!dateStr) return { year: 0, month: 1, day: 1 };
+    // Если это Date или Timestamp → конвертируем в строку
+    if (dateStr instanceof Date || (dateStr.toDate && typeof dateStr.toDate === 'function')) {
+        if (dateStr.toDate) dateStr = dateStr.toDate();
+        const y = dateStr.getFullYear();
+        const m = String(dateStr.getMonth() + 1).padStart(2, '0');
+        const d = String(dateStr.getDate()).padStart(2, '0');
+        dateStr = `${y}-${m}-${d}`;
+    }
+    const parts = String(dateStr).split('-');
     return {
-        year: parseInt(parts[0], 10),
-        month: parseInt(parts[1], 10),
-        day: parseInt(parts[2], 10)
+        year: parseInt(parts[0], 10) || 0,
+        month: parseInt(parts[1], 10) || 1,
+        day: parseInt(parts[2], 10) || 1
     };
 }
 
@@ -84,8 +138,8 @@ function makeDateStr(year, month, day) {
  */
 function getDayOfWeek(dateStr) {
     const { year, month, day } = parseDate(dateStr);
+    if (!year) return 0;
     // Формула Зеллера для григорианского календаря
-    // Корректируем месяц: январь и февраль — 13-й и 14-й месяц предыдущего года
     let m = month;
     let y = year;
     if (m <= 2) { m += 12; y--; }
@@ -99,12 +153,12 @@ function getDayOfWeek(dateStr) {
 }
 
 /**
- * Сдвиг даты на N дней (чисто строковая операция)
+ * Сдвиг даты на N дней
  */
 export function shiftDate(dateStr, days) {
     if (days === 0) return dateStr;
     const { year, month, day } = parseDate(dateStr);
-    // Используем Date для сдвига (это безопасно, так как мы работаем с локальным временем)
+    if (!year) return dateStr;
     const d = new Date(year, month - 1, day);
     d.setDate(d.getDate() + days);
     return formatDateISO(d);
@@ -112,19 +166,16 @@ export function shiftDate(dateStr, days) {
 
 /**
  * Получение понедельника недели по любой дате недели
- * @param {string} dateStr - любая дата в формате YYYY-MM-DD
- * @returns {string} YYYY-MM-DD понедельника
  */
 export function getWeekMonday(dateStr) {
-    const dow = getDayOfWeek(dateStr); // 1=пн..7=вс
-    const daysToMonday = 1 - dow; // пн=1 → 0, вт=2 → -1, ср=3 → -2, ..., вс=7 → -6
+    const dow = getDayOfWeek(dateStr);
+    if (!dow) return dateStr;
+    const daysToMonday = 1 - dow;
     return shiftDate(dateStr, daysToMonday);
 }
 
 /**
  * Получение воскресенья недели
- * @param {string} mondayStr - понедельник в формате YYYY-MM-DD
- * @returns {string} YYYY-MM-DD воскресенья
  */
 export function getWeekSunday(mondayStr) {
     return shiftDate(mondayStr, 6);
@@ -158,7 +209,6 @@ export function getMonthStart(dateStr) {
  */
 export function getMonthEnd(dateStr) {
     const { year, month } = parseDate(dateStr);
-    // Следующий месяц, 0-й день = последний день текущего
     const d = new Date(year, month, 0);
     return formatDateISO(d);
 }
@@ -179,9 +229,8 @@ export function shiftMonth(dateStr, months) {
 export function getDatesInRange(startStr, endStr) {
     const result = [];
     let cur = startStr;
-    while (cur <= endStr) {
+    while (cur && cur <= endStr) {
         result.push(cur);
-        // Сдвигаем на 1 день
         const { year, month, day } = parseDate(cur);
         const d = new Date(year, month - 1, day);
         d.setDate(d.getDate() + 1);
@@ -196,13 +245,15 @@ export function getDatesInRange(startStr, endStr) {
  * Форматирование даты для input[type=date] (YYYY-MM-DD)
  */
 export function formatDateForInput(date) {
+    if (!date) return '';
+    if (date.toDate && typeof date.toDate === 'function') date = date.toDate();
     if (date instanceof Date) return formatDateISO(date);
     if (typeof date === 'string') return date;
     return '';
 }
 
 /**
- * Форматирование даты для отображения (DD.MM.YYYY) — алиас
+ * Форматирование даты для отображения (DD.MM.YYYY)
  */
 export function formatDateForDisplay(dateStr) {
     return formatDate(dateStr);
@@ -212,6 +263,10 @@ export function formatDateForDisplay(dateStr) {
  * Получение строки месяца (YYYY-MM)
  */
 export function getMonthStr(date) {
+    if (!date) return '';
+    if (date.toDate && typeof date.toDate === 'function') date = date.toDate();
+    if (typeof date === 'string') date = new Date(date);
+    if (!(date instanceof Date) || isNaN(date.getTime())) return String(date);
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
     return `${y}-${m}`;
@@ -221,16 +276,21 @@ export function getMonthStr(date) {
  * Название месяца из строки YYYY-MM
  */
 export function getMonthName(monthStr) {
+    if (!monthStr) return '';
     const months = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-    const parts = monthStr.split('-');
+    const parts = String(monthStr).split('-');
     const m = parseInt(parts[1]) - 1;
-    return months[m] + ' ' + parts[0];
+    return (months[m] || '') + ' ' + (parts[0] || '');
 }
 
 /**
  * Диапазон недели по дате
  */
 export function getWeekRange(date) {
+    if (!date) return { start: '', end: '' };
+    if (date.toDate && typeof date.toDate === 'function') date = date.toDate();
+    if (typeof date === 'string') date = new Date(date + 'T00:00:00');
+    if (!(date instanceof Date) || isNaN(date.getTime())) return { start: '', end: '' };
     const monday = getWeekMonday(formatDateISO(date));
     const sunday = getWeekSunday(monday);
     return { start: monday, end: sunday };
@@ -240,6 +300,10 @@ export function getWeekRange(date) {
  * Диапазон месяца по дате
  */
 export function getMonthRange(date) {
+    if (!date) return { start: '', end: '' };
+    if (date.toDate && typeof date.toDate === 'function') date = date.toDate();
+    if (typeof date === 'string') date = new Date(date);
+    if (!(date instanceof Date) || isNaN(date.getTime())) return { start: '', end: '' };
     const ys = date.getFullYear();
     const ms = date.getMonth();
     const start = formatDateISO(new Date(ys, ms, 1));

@@ -873,23 +873,35 @@ async function loadAdminPhotosTab() {
 
 // ОТЧЁТЫ СКЛАДА перенесены в admin-warehouse.js (initAdminWarehouseReports)
 
-// ===== ЗАРПЛАТА УПАКОВЩИЦ (как у кладовщиков — все сразу) =====
+// ===== ЗАРПЛАТА УПАКОВЩИЦ (с выбором сотрудника) =====
 async function initAdminPackingSalary() {
     const container = document.getElementById('adminPackingSalary');
     if (!container) return;
 
-    const { getTodayStr, getMonthRange, getWeekRange } = await import('../utils/dates.js');
+    const { getTodayStr, getMonthRange, getWeekRange, formatDateForDisplay } = await import('../utils/dates.js');
     const today = getTodayStr();
 
+    const { getEmployeesCached } = await import('./auth.js');
+    const emps = await getEmployeesCached();
+    // Только упаковщицы и операторы (не админы, не кладовщики)
+    const packers = emps.filter(e => e.role === 'user' || e.role === 'packer' || e.role === 'operator');
+    const empOptions = packers.map(e => `<option value="${escAttr(e.id)}">${esc(e.name)}</option>`).join('');
+
     container.innerHTML = `
-        <div class="salary-month-selector">
-            <select id="pckSalaryMode" class="input-field" style="width:auto;">
-                <option value="month">Месяц</option>
-                <option value="week">Неделя</option>
+        <div class="report-filters">
+            <select class="input-field" id="pckEmpSelect" style="width:100%;">
+                <option value="">— Все сотрудники —</option>
+                ${empOptions}
             </select>
-            <input type="month" class="input-field" id="pckSalaryMonth" value="${today.slice(0, 7)}" style="width:auto;">
-            <input type="date" class="input-field" id="pckSalaryWeek" value="${today}" style="display:none;width:auto;">
-            <button id="pckSalaryBtn" class="btn-primary">Показать</button>
+            <div class="salary-month-selector" style="margin:0;">
+                <select id="pckSalaryMode" class="input-field" style="width:auto;">
+                    <option value="month">Месяц</option>
+                    <option value="week">Неделя</option>
+                </select>
+                <input type="month" class="input-field" id="pckSalaryMonth" value="${today.slice(0, 7)}" style="width:auto;">
+                <input type="date" class="input-field" id="pckSalaryWeek" value="${today}" style="display:none;width:auto;">
+                <button id="pckSalaryBtn" class="btn-primary">Показать</button>
+            </div>
         </div>
         <div id="pckSalaryResult"></div>
     `;
@@ -898,6 +910,7 @@ async function initAdminPackingSalary() {
     const monthInput = document.getElementById('pckSalaryMonth');
     const weekInput = document.getElementById('pckSalaryWeek');
     const pckSalaryBtn = document.getElementById('pckSalaryBtn');
+    const empSelect = document.getElementById('pckEmpSelect');
 
     if (modeSelect) {
         modeSelect.addEventListener('change', function () {
@@ -910,6 +923,7 @@ async function initAdminPackingSalary() {
         pckSalaryBtn.onclick = async () => {
             const mode = modeSelect?.value || 'month';
             const val = mode === 'month' ? monthInput?.value : weekInput?.value;
+            const selectedUserId = empSelect?.value || '';
             const resultDiv = document.getElementById('pckSalaryResult');
             if (!resultDiv) return;
             resultDiv.innerHTML = '<div class="loading-spinner">Загрузка...</div>';
@@ -926,15 +940,11 @@ async function initAdminPackingSalary() {
             }
 
             const { calculateTotalSalaryForPeriod } = await import('./salary.js');
-            const { getEmployeesCached } = await import('./auth.js');
 
-            const [salaryData, emps] = await Promise.all([
-                calculateTotalSalaryForPeriod(startDate, endDate),
-                getEmployeesCached()
-            ]);
+            const salaryData = await calculateTotalSalaryForPeriod(startDate, endDate);
 
             const empMap = {};
-            emps.forEach(e => { empMap[e.id] = e; });
+            packers.forEach(e => { empMap[e.id] = e; });
 
             const userIds = Object.keys(salaryData.byUser || {});
             if (userIds.length === 0) {
@@ -942,6 +952,58 @@ async function initAdminPackingSalary() {
                 return;
             }
 
+            // Если выбран конкретный сотрудник — показываем детальную карточку
+            if (selectedUserId) {
+                const data = salaryData.byUser[selectedUserId];
+                const emp = empMap[selectedUserId] || { name: 'Неизвестный' };
+                if (!data) {
+                    resultDiv.innerHTML = '<div class="empty-state">Нет данных по выбранному сотруднику</div>';
+                    return;
+                }
+
+                let detailHtml = '';
+                if (data.qty > 0) {
+                    detailHtml += `
+                        <div class="report-section-title">📦 Упаковка</div>
+                        <div class="salary-detail-row">
+                            <span class="salary-detail-label">Упаковано товара</span>
+                            <span class="salary-detail-value">${data.qty.toLocaleString('ru-RU')} шт</span>
+                        </div>
+                        <div class="salary-detail-row">
+                            <span class="salary-detail-label">Зарплата (сделка)</span>
+                            <span class="salary-detail-value">${Math.round(data.packSalary).toLocaleString('ru-RU')} ₽</span>
+                        </div>`;
+                }
+                if (data.operatorEarnings > 0) {
+                    detailHtml += `
+                        <div class="report-section-title">📅 Выходы (оператор)</div>
+                        <div class="salary-detail-row">
+                            <span class="salary-detail-label">Зарплата (выходы)</span>
+                            <span class="salary-detail-value">${Math.round(data.operatorEarnings).toLocaleString('ru-RU')} ₽</span>
+                        </div>`;
+                }
+                if (!detailHtml) {
+                    detailHtml = '<div style="text-align:center;padding:16px;color:var(--text-secondary);">Нет операций</div>';
+                }
+
+                resultDiv.innerHTML = `
+                    <div class="report-result-card">
+                        <div class="report-result-header">
+                            <div class="report-result-avatar">${(emp.name || '?')[0].toUpperCase()}</div>
+                            <div class="report-result-info">
+                                <div class="report-result-name">${esc(emp.name)}</div>
+                                <div class="report-result-period">${formatDateForDisplay(startDate)} — ${formatDateForDisplay(endDate)}</div>
+                            </div>
+                            <div class="report-result-total">${Math.round(data.total).toLocaleString('ru-RU')} ₽</div>
+                        </div>
+                        <div class="report-result-details">
+                            ${detailHtml}
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            // Иначе — общий список всех сотрудников
             let total = 0;
             let whtml = '<div class="salary-employee-card"><div class="salary-items">';
             userIds.sort((a, b) => (salaryData.byUser[b]?.total || 0) - (salaryData.byUser[a]?.total || 0));
@@ -949,9 +1011,9 @@ async function initAdminPackingSalary() {
                 const emp = empMap[uid] || { name: 'Неизвестный' };
                 const data = salaryData.byUser[uid];
                 total += data.total || 0;
-                whtml += `<div class="salary-item"><span class="salary-item-label">${esc(emp.name)}</span><span class="salary-item-value">${(data.total || 0).toLocaleString('ru-RU')} ₽</span></div>`;
+                whtml += `<div class="salary-item"><span class="salary-item-label">${esc(emp.name)}</span><span class="salary-item-value">${Math.round(data.total || 0).toLocaleString('ru-RU')} ₽</span></div>`;
             });
-            whtml += `<div class="salary-divider"></div><div class="salary-total"><span>Итого</span><span class="salary-total-value">${total.toLocaleString('ru-RU')} ₽</span></div>`;
+            whtml += `<div class="salary-divider"></div><div class="salary-total"><span>Итого</span><span class="salary-total-value">${Math.round(total).toLocaleString('ru-RU')} ₽</span></div>`;
             whtml += '</div></div>';
             resultDiv.innerHTML = whtml;
         };
