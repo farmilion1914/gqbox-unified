@@ -1326,10 +1326,13 @@ async function loadAdminUsersTab() {
                     dailyRateText = '—';
                     displayRoleText = 'Администратор';
                 } else if (e.warehouseRole) {
-                    dailyRateText = getWarehouseRoleRate(e.warehouseRole) + ' ₽/выход';
+                    // Если есть индивидуальная ставка — показываем её, иначе по роли
+                    const customRate = e.dailyRate;
+                    dailyRateText = customRate ? customRate + ' ₽/выход' : getWarehouseRoleRate(e.warehouseRole) + ' ₽/выход';
                     displayRoleText = whRoleLabel + ' · ' + e.sourceLabel;
                 } else if (e.appRole === 'operator' || e.role === 'operator') {
-                    dailyRateText = '4000 ₽/выход';
+                    const customRate = e.dailyRate;
+                    dailyRateText = customRate ? customRate + ' ₽/выход' : '4000 ₽/выход';
                     displayRoleText = 'Оператор · ' + e.sourceLabel;
                 } else {
                     dailyRateText = 'сделка';
@@ -1392,7 +1395,7 @@ async function loadAdminUsersTab() {
                     // Если уже открыт инпут — не дублируем
                     if (this.querySelector('input')) return;
 
-                    const origText = this.textContent;
+                    let origText = this.textContent;
                     this.innerHTML = `
                         <input type="number" class="rate-edit-input" value="${currentRate}" min="1000" max="10000" step="100" style="width:80px;padding:4px 6px;font-size:0.68rem;border-radius:6px;border:1px solid var(--primary);background:var(--input-bg);color:var(--text);outline:none;">
                         <button class="rate-edit-save" style="padding:4px 8px;font-size:0.6rem;border-radius:6px;border:none;background:var(--primary);color:#fff;cursor:pointer;margin-left:4px;">✓</button>
@@ -1400,30 +1403,59 @@ async function loadAdminUsersTab() {
 
                     const input = this.querySelector('input');
                     const saveBtn = this.querySelector('.rate-edit-save');
+                    let blurTimeout;
+                    let isSaving = false;
 
                     const doSave = async () => {
+                        isSaving = true;
                         const val = parseInt(input.value);
                         if (!val || val < 100) { toast.error('Некорректная ставка'); return; }
                         try {
+                            // Очищаем таймаут blur, чтобы он не перезаписал значение
+                            if (blurTimeout) clearTimeout(blurTimeout);
                             // Сохраняем ставку и дату, с которой она действует (сегодня)
                             const { getTodayStr } = await import('../utils/dates.js');
+                            const { invalidateEmployeesCache } = await import('./auth.js');
                             const today = getTodayStr();
                             await db.collection('employees').doc(userId).update({
                                 dailyRate: val,
                                 dailyRateEffectiveFrom: today
                             });
+                            // Сбрасываем кэш, чтобы при следующей перерисовке показалось новое значение
+                            invalidateEmployeesCache();
+                            // Обновляем origText, чтобы blur не вернул старое значение
+                            origText = val.toLocaleString('ru-RU') + ' ₽/выход';
                             this.dataset.rate = val;
-                            this.textContent = val.toLocaleString('ru-RU') + ' ₽/выход';
+                            // Удаляем инпут из DOM, чтобы blur не мог его восстановить
+                            this.textContent = origText;
                             toast.success('Ставка ' + val + ' ₽ действует с ' + today.slice(8) + '.' + today.slice(5,7) + '.' + today.slice(0,4));
+                            // Обновляем данные в локальном массиве allEmps, чтобы при следующей перерисовке показалось новое значение
+                            const empInList = allEmps.find(e => e.id === userId);
+                            if (empInList) {
+                                empInList.dailyRate = val;
+                                empInList.dailyRateEffectiveFrom = today;
+                            }
+                            // НЕ перезагружаем весь список — UI уже обновлён выше
                         } catch (err) {
                             toast.error('Ошибка: ' + err.message);
                             this.textContent = origText;
                         }
                     };
 
+                    // Предотвращаем потерю фокуса при клике на кнопку
+                    saveBtn.onpointerdown = (ev) => { ev.preventDefault(); };
                     saveBtn.onclick = (ev) => { ev.stopPropagation(); doSave(); };
                     input.onkeydown = (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); doSave(); } };
-                    input.onblur = () => { if (this.querySelector('input')) this.innerHTML = origText; };
+                    // Откладываем blur на 200мс, чтобы успел сработать клик по кнопке сохранения
+                    input.onblur = () => { 
+                        blurTimeout = setTimeout(() => { 
+                            // Если уже сохраняем или инпут уже удалён — не трогаем
+                            if (isSaving) return;
+                            if (this.querySelector('input')) { 
+                                this.innerHTML = origText; 
+                            } 
+                        }, 200); 
+                    };
                     input.focus();
                     input.select();
                 };
