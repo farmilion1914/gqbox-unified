@@ -110,35 +110,95 @@ export async function renderUserPanel(user) {
         </div>`;
 }
 
-// ===== РЕНДЕР ИСТОРИИ =====
+// ===== РЕНДЕР ИСТОРИИ (iOS-карточки + поиск) =====
 function renderHistory(records) {
-    const totalPages = Math.ceil(records.length / HISTORY_PAGE_SIZE) || 1;
-    if (historyCurrentPage > totalPages) historyCurrentPage = Math.max(1, totalPages);
-    const start = (historyCurrentPage - 1) * HISTORY_PAGE_SIZE;
-    const pageRecords = records.slice(start, start + HISTORY_PAGE_SIZE);
+    // Фильтр по поиску
+    const searchTerm = (window._historySearchTerm || '').toLowerCase().trim();
+    const searchDate = window._historySearchDate || '';
 
-    if (records.length === 0) {
-        return '<div class="empty-state">Нет записей</div>';
+    let filtered = records;
+    if (searchTerm) {
+        filtered = filtered.filter(r => {
+            const art = (r.article || '').toLowerCase();
+            return art.indexOf(searchTerm) >= 0;
+        });
+    }
+    if (searchDate) {
+        filtered = filtered.filter(r => r.dateOnly === searchDate);
     }
 
+    const totalPages = Math.ceil(filtered.length / HISTORY_PAGE_SIZE) || 1;
+    if (historyCurrentPage > totalPages) historyCurrentPage = Math.max(1, totalPages);
+    const start = (historyCurrentPage - 1) * HISTORY_PAGE_SIZE;
+    const pageRecords = filtered.slice(start, start + HISTORY_PAGE_SIZE);
+
+    // Строка поиска iOS-стиль
     let html = `
-        <div class="filter-row-center" style="margin-bottom:6px;">
-            <span class="text-muted">Всего: ${records.length} записей</span>
-            ${totalPages > 1 ? `<span class="text-muted">Стр. ${historyCurrentPage}/${totalPages}</span>` : ''}
+        <div class="history-search-bar">
+            <div class="history-search-field">
+                <span class="history-search-icon">🔍</span>
+                <input type="text" class="history-search-input" id="historySearchInput" placeholder="Поиск по артикулу" value="${esc(window._historySearchTerm || '')}" autocomplete="off">
+                ${window._historySearchTerm ? '<button class="history-search-clear" id="historySearchClear">✕</button>' : ''}
+            </div>
+            <div class="history-date-row">
+                <input type="date" class="input-field" id="historyDateFilter" value="${searchDate}" style="flex:1;">
+                ${searchDate ? '<button class="history-search-clear" id="historyDateClear">✕</button>' : ''}
+            </div>
+        </div>`;
+
+    if (filtered.length === 0) {
+        html += '<div class="empty-state">' +
+            ((searchTerm || searchDate) ? 'Ничего не найдено' : 'Нет записей') +
+            '</div>';
+        return html;
+    }
+
+    html += `
+        <div class="history-stats-bar">
+            <span>${filtered.length === records.length ? `Всего: ${records.length} записей` : `Найдено: ${filtered.length} из ${records.length}`}</span>
+            ${totalPages > 1 ? `<span>Стр. ${historyCurrentPage}/${totalPages}</span>` : ''}
         </div>
-        <div class="table-wrap">
-            <table><thead><tr><th>ИП</th><th>МП</th><th>Склад</th><th>Арт.</th><th>Кол-во</th><th>Дата</th><th></th></tr></thead>
-            <tbody>${pageRecords.map(r => `
-                <tr>
-                    <td>${r.ip ? `<span class="ip-badge">${esc(r.ip)}</span>` : '—'}</td>
-                    <td><span class="marketplace-badge ${r.marketplace === 'WB' ? 'badge-wb' : 'badge-ozon'}">${esc(r.marketplace)}</span></td>
-                    <td>${esc(r.locationDisplay || '—')}</td>
-                    <td><strong>${esc(r.article)}</strong></td>
-                    <td>${r.quantity}</td>
-                    <td class="text-muted">${r.dateStr ? esc(r.dateStr.split(',')[0]) : '—'}</td>
-                    <td><span class="delete-icon" data-id="${r.id}">🗑️</span></td>
-                </tr>`).join('')}
-            </tbody></table>
+        <div class="history-card-list">
+            ${pageRecords.map(r => {
+                const datePart = r.dateStr ? r.dateStr.split(',')[0] : '—';
+                const mpClass = r.marketplace === 'WB' ? 'badge-wb' : 'badge-ozon';
+                // Подсветка совпадения в артикуле
+                let articleHtml = esc(r.article);
+                if (searchTerm && articleHtml.toLowerCase().indexOf(searchTerm) >= 0) {
+                    const idx = articleHtml.toLowerCase().indexOf(searchTerm);
+                    const match = articleHtml.substr(idx, searchTerm.length);
+                    articleHtml = articleHtml.slice(0, idx) + '<span class="highlight">' + match + '</span>' + articleHtml.slice(idx + searchTerm.length);
+                }
+                return `
+                <div class="history-card-item">
+                    <div class="hci-top">
+                        <div class="hci-article">${articleHtml}</div>
+                        <span class="delete-icon" data-id="${r.id}">🗑️</span>
+                    </div>
+                    <div class="hci-details">
+                        <div class="hci-row">
+                            <span class="hci-label">Количество</span>
+                            <span class="hci-value">${r.quantity} шт</span>
+                        </div>
+                        <div class="hci-row">
+                            <span class="hci-label">Маркетплейс</span>
+                            <span class="marketplace-badge ${mpClass}">${esc(r.marketplace)}</span>
+                        </div>
+                        <div class="hci-row">
+                            <span class="hci-label">Склад</span>
+                            <span class="hci-value">${esc(r.locationDisplay || '—')}</span>
+                        </div>
+                        <div class="hci-row">
+                            <span class="hci-label">ИП</span>
+                            <span class="hci-value">${r.ip ? esc(r.ip) : '—'}</span>
+                        </div>
+                        <div class="hci-row">
+                            <span class="hci-label">Дата</span>
+                            <span class="hci-value text-muted">${datePart}</span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('')}
         </div>
         ${totalPages > 1 ? renderPagination(totalPages) : ''}`;
 
@@ -375,7 +435,7 @@ function switchTab(tabName) {
     currentTab = tabName;
 }
 
-// ===== ИСТОРИЯ: УДАЛЕНИЕ + ПАГИНАЦИЯ =====
+// ===== ИСТОРИЯ: УДАЛЕНИЕ + ПАГИНАЦИЯ + ПОИСК =====
 function attachHistoryEvents() {
     const historyContainer = document.getElementById('historyContainer');
     if (!historyContainer) return;
@@ -396,12 +456,71 @@ function attachHistoryEvents() {
     historyContainer.querySelectorAll('[data-hp]').forEach(btn => {
         btn.onclick = function () {
             const page = parseInt(this.dataset.hp);
-            const totalPages = Math.ceil(allUserRecords.length / HISTORY_PAGE_SIZE) || 1;
-            if (page >= 1 && page <= totalPages) {
+            const totalPages = Math.ceil(
+                (window._historySearchTerm || window._historySearchDate
+                    ? renderHistory(allUserRecords).length // фактически нужна длина отфильтрованных
+                    : allUserRecords.length)
+            );
+            // Считаем filtered через ту же логику
+            const searchTerm = (window._historySearchTerm || '').toLowerCase().trim();
+            const searchDate = window._historySearchDate || '';
+            let filtered = allUserRecords;
+            if (searchTerm) filtered = filtered.filter(r => (r.article || '').toLowerCase().indexOf(searchTerm) >= 0);
+            if (searchDate) filtered = filtered.filter(r => r.dateOnly === searchDate);
+            const totalPages2 = Math.ceil(filtered.length / HISTORY_PAGE_SIZE) || 1;
+            if (page >= 1 && page <= totalPages2) {
                 historyCurrentPage = page;
                 historyContainer.innerHTML = renderHistory(allUserRecords);
                 attachHistoryEvents();
             }
         };
     });
+
+    // Поиск по артикулу (debounce)
+    const searchInput = document.getElementById('historySearchInput');
+    if (searchInput) {
+        let searchTimer;
+        searchInput.addEventListener('input', function () {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                window._historySearchTerm = this.value;
+                historyCurrentPage = 1;
+                historyContainer.innerHTML = renderHistory(allUserRecords);
+                attachHistoryEvents();
+            }, 250);
+        });
+    }
+
+    // Фильтр по дате
+    const dateFilter = document.getElementById('historyDateFilter');
+    if (dateFilter) {
+        dateFilter.addEventListener('change', function () {
+            window._historySearchDate = this.value;
+            historyCurrentPage = 1;
+            historyContainer.innerHTML = renderHistory(allUserRecords);
+            attachHistoryEvents();
+        });
+    }
+
+    // Очистка поиска
+    const searchClear = document.getElementById('historySearchClear');
+    if (searchClear) {
+        searchClear.onclick = function () {
+            window._historySearchTerm = '';
+            historyCurrentPage = 1;
+            historyContainer.innerHTML = renderHistory(allUserRecords);
+            attachHistoryEvents();
+        };
+    }
+
+    // Очистка даты
+    const dateClear = document.getElementById('historyDateClear');
+    if (dateClear) {
+        dateClear.onclick = function () {
+            window._historySearchDate = '';
+            historyCurrentPage = 1;
+            historyContainer.innerHTML = renderHistory(allUserRecords);
+            attachHistoryEvents();
+        };
+    }
 }

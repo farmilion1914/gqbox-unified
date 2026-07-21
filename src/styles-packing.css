@@ -1047,3 +1047,173 @@ body.dark-theme .salary-detail-row,
     color: #fff;
     border-color: var(--primary);
 }
+
+/* ===== КАРТОЧКИ ИСТОРИИ (вместо таблицы) ===== */
+.history-stats-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 2px 8px;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+}
+
+.history-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.history-card-item {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: box-shadow 0.15s;
+}
+
+.history-card-item:active {
+    box-shadow: var(--shadow-sm);
+}
+
+.hci-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px 4px;
+}
+
+.hci-article {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.3px;
+    font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+}
+
+.hci-details {
+    padding: 0 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.hci-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.68rem;
+    padding: 2px 0;
+}
+
+.hci-label {
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.hci-value {
+    font-weight: 500;
+    color: var(--text);
+    text-align: right;
+}
+
+body.dark-theme .history-card-item,
+[data-theme="dark"] .history-card-item {
+    border-color: rgba(255, 255, 255, 0.06);
+}
+
+/* ===== ПОИСК В ИСТОРИИ (iOS-стиль) ===== */
+.history-search-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.history-search-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: var(--input-bg);
+    border-radius: 10px;
+    border: 1px solid var(--border-light);
+    overflow: hidden;
+    transition: border-color 0.15s;
+}
+
+.history-search-field:focus-within {
+    border-color: var(--primary);
+}
+
+.history-search-icon {
+    position: absolute;
+    left: 10px;
+    font-size: 0.8rem;
+    opacity: 0.5;
+    pointer-events: none;
+    line-height: 1;
+}
+
+.history-search-input {
+    flex: 1;
+    padding: 10px 10px 10px 30px;
+    border: none;
+    background: transparent;
+    font-size: 0.82rem;
+    font-weight: 400;
+    color: var(--text);
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.history-search-input::placeholder {
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.history-search-clear {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: rgba(118, 118, 128, 0.12);
+    border-radius: 50%;
+    color: var(--text-secondary);
+    font-size: 0.65rem;
+    cursor: pointer;
+    margin-right: 6px;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+
+.history-search-clear:active {
+    background: rgba(118, 118, 128, 0.25);
+}
+
+.history-date-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.history-date-row .input-field {
+    padding: 8px 10px;
+    font-size: 0.75rem;
+    border-radius: 10px;
+}
+
+/* Подсветка совпадения в артикуле */
+.highlight {
+    background: rgba(255, 204, 0, 0.35);
+    color: var(--text);
+    border-radius: 2px;
+    padding: 0 1px;
+}
+
+body.dark-theme .highlight,
+[data-theme="dark"] .highlight {
+    background: rgba(255, 204, 0, 0.25);
+}

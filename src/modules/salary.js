@@ -1,7 +1,7 @@
 // ==================== МОДУЛЬ РАСЧЁТА ЗАРПЛАТЫ ====================
 
 import { getKV, calcSalary, DEFAULT_DAILY_RATE } from '../config.js';
-import { getWeekMonday, getWeekSunday, formatDateISO, formatDateShort, formatDateFull, formatMonthYear } from '../utils/dates.js';
+import { getTodayStr, getWeekMonday, getWeekSunday, formatDateISO, formatDateShort, formatDateFull, formatMonthYear } from '../utils/dates.js';
 import { getOperatorEarningForPeriod } from './attendance.js';
 import { getEmployees } from './auth.js';
 import { queryWhere, getDB } from '../services/firebase.js';
@@ -118,13 +118,15 @@ export function getMonthData(records, year, month) {
 }
 
 /**
- * Получение текущего понедельника недели
+ * Получение текущего понедельника недели (возвращает Date)
  */
 export function getCurrentWeekMonday() {
-    const now = new Date();
-    const monday = getWeekMonday(now);
-    monday.setDate(monday.getDate() + salaryWeekOffset * 7);
-    return monday;
+    const now = getTodayStr();
+    const mondayStr = getWeekMonday(now);
+    // Сдвиг на N недель
+    const result = new Date(mondayStr);
+    result.setDate(result.getDate() + salaryWeekOffset * 7);
+    return result;
 }
 
 /**
