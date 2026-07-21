@@ -30,7 +30,11 @@ export async function checkIn(userId, userName, role) {
     
     let earned = 0;
     if (role === 'operator') {
-        const rate = DEFAULT_DAILY_RATE;
+        // Берём ставку из документа сотрудника (если есть), иначе DEFAULT
+        const { getEmployeesCached } = await import('./auth.js');
+        const emps = await getEmployeesCached();
+        const emp = emps.find(e => e.id === userId);
+        const rate = (emp && emp.dailyRate) ? emp.dailyRate : DEFAULT_DAILY_RATE;
         earned = rate;
         await addDoc('operator_earnings', {
             userId,

@@ -466,6 +466,22 @@ export async function calculateTotalSalaryForPeriod(startStr, endStr) {
         attByUser[data.userId].add(data.date);
     });
 
+    // Загружаем ВСЕ operator_earnings за период одним запросом
+    const opEarningsSnap = await getDB()
+        .collection('operator_earnings')
+        .where('date', '>=', startStr)
+        .where('date', '<=', endStr)
+        .get();
+
+    const opEarningsByUser = {};
+    opEarningsSnap.docs.forEach(d => {
+        const data = d.data();
+        if (!data.userId) return;
+        if (!opEarningsByUser[data.userId]) opEarningsByUser[data.userId] = { days: new Set(), total: 0 };
+        opEarningsByUser[data.userId].days.add(data.date);
+        opEarningsByUser[data.userId].total += data.amount || 0;
+    });
+
     const byUser = {};
     let totalQty = 0;
     let totalPackerSalary = 0;
@@ -483,9 +499,17 @@ export async function calculateTotalSalaryForPeriod(startStr, endStr) {
         let operatorEarn = 0;
         let opDays = 0;
         if (emp.role === 'operator') {
-            const dailyRate = emp.dailyRate || DEFAULT_DAILY_RATE;
-            opDays = attByUser[emp.id] ? attByUser[emp.id].size : 0;
-            operatorEarn = opDays * dailyRate;
+            const earningsData = opEarningsByUser[emp.id];
+            if (earningsData && earningsData.days.size > 0) {
+                // Есть реальные записи о зарплате — используем их (с учётом изменений ставки)
+                opDays = earningsData.days.size;
+                operatorEarn = earningsData.total;
+            } else {
+                // Нет записей — считаем по текущей ставке (обратная совместимость)
+                const dailyRate = emp.dailyRate || DEFAULT_DAILY_RATE;
+                opDays = attByUser[emp.id] ? attByUser[emp.id].size : 0;
+                operatorEarn = opDays * dailyRate;
+            }
             totalOperatorDays += opDays;
             totalOperatorEarnings += operatorEarn;
         }

@@ -1350,7 +1350,7 @@ async function loadAdminUsersTab() {
                             </div>
                             <div class="employee-meta">
                                 <span class="employee-login">@${esc(e.login)}</span>
-                                <span class="employee-rate">${dailyRateText}</span>
+                                <span class="employee-rate" data-user-id="${esc(e.id)}" data-db="${e.dbType}" data-rate="${e.dailyRate || ''}">${dailyRateText}</span>
                                 ${stats ? `<span class="employee-today-stat">${stats.qty} шт (${stats.records} зап.)</span>` : ''}
                             </div>
                         </div>
@@ -1377,6 +1377,58 @@ async function loadAdminUsersTab() {
         }
 
         function bindEmployeeEvents() {
+            // Инлайн-редактирование ставки за выход
+            document.querySelectorAll('.employee-rate').forEach(el => {
+                // Удаляем старый обработчик (если перерисовка)
+                el.style.cursor = 'pointer';
+                el.title = 'Нажмите для изменения ставки';
+                el.onclick = function (e) {
+                    e.stopPropagation();
+                    const userId = this.dataset.userId;
+                    const db = this.dataset.db === 'warehouse' ? getWarehouseDB() : getDB();
+                    const currentRate = this.dataset.rate;
+                    const currentText = this.textContent.trim();
+
+                    // Если уже открыт инпут — не дублируем
+                    if (this.querySelector('input')) return;
+
+                    const origText = this.textContent;
+                    this.innerHTML = `
+                        <input type="number" class="rate-edit-input" value="${currentRate}" min="1000" max="10000" step="100" style="width:80px;padding:4px 6px;font-size:0.68rem;border-radius:6px;border:1px solid var(--primary);background:var(--input-bg);color:var(--text);outline:none;">
+                        <button class="rate-edit-save" style="padding:4px 8px;font-size:0.6rem;border-radius:6px;border:none;background:var(--primary);color:#fff;cursor:pointer;margin-left:4px;">✓</button>
+                    `;
+
+                    const input = this.querySelector('input');
+                    const saveBtn = this.querySelector('.rate-edit-save');
+
+                    const doSave = async () => {
+                        const val = parseInt(input.value);
+                        if (!val || val < 100) { toast.error('Некорректная ставка'); return; }
+                        try {
+                            // Сохраняем ставку и дату, с которой она действует (сегодня)
+                            const { getTodayStr } = await import('../utils/dates.js');
+                            const today = getTodayStr();
+                            await db.collection('employees').doc(userId).update({
+                                dailyRate: val,
+                                dailyRateEffectiveFrom: today
+                            });
+                            this.dataset.rate = val;
+                            this.textContent = val.toLocaleString('ru-RU') + ' ₽/выход';
+                            toast.success('Ставка ' + val + ' ₽ действует с ' + today.slice(8) + '.' + today.slice(5,7) + '.' + today.slice(0,4));
+                        } catch (err) {
+                            toast.error('Ошибка: ' + err.message);
+                            this.textContent = origText;
+                        }
+                    };
+
+                    saveBtn.onclick = (ev) => { ev.stopPropagation(); doSave(); };
+                    input.onkeydown = (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); doSave(); } };
+                    input.onblur = () => { if (this.querySelector('input')) this.innerHTML = origText; };
+                    input.focus();
+                    input.select();
+                };
+            });
+
             document.querySelectorAll('.emp-role-select').forEach(select => {
                 select.addEventListener('change', async function () {
                     const db = this.dataset.db === 'warehouse' ? getWarehouseDB() : getDB();
