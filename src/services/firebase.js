@@ -1,4 +1,4 @@
-// ==================== СЕРВИС FIREBASE (ДВА ПРОЕКТА) ====================
+// ==================== СЕРВИС FIREBASE (ДВА ПРОЕКТА + AUTH) ====================
 
 import { FIREBASE_CONFIG } from '../config.js';
 import { FIREBASE_CONFIG_WAREHOUSE } from '../config.js';
@@ -7,6 +7,8 @@ let _dbPacking = null;
 let _dbWarehouse = null;
 let _appPacking = null;
 let _appWarehouse = null;
+let _auth = null;
+let _authWarehouse = null;
 
 export function initFirebase() {
     if (typeof firebase === 'undefined') {
@@ -14,20 +16,22 @@ export function initFirebase() {
         return;
     }
 
-// Проект упаковщиц
+    // Проект упаковщиц
     if (!_appPacking) {
         _appPacking = firebase.initializeApp(FIREBASE_CONFIG, 'packing');
         _dbPacking = firebase.firestore(_appPacking);
-        window.db = _dbPacking; // для совместимости с глобальным scanner.js
+        _auth = firebase.auth(_appPacking);
+        window.db = _dbPacking;
         try {
             _dbPacking.enablePersistence({ synchronizeTabs: true }).catch(() => {});
         } catch (e) {}
     }
 
-// Проект кладовщиков
+    // Проект кладовщиков
     if (!_appWarehouse) {
         _appWarehouse = firebase.initializeApp(FIREBASE_CONFIG_WAREHOUSE, 'warehouse');
         _dbWarehouse = firebase.firestore(_appWarehouse);
+        _authWarehouse = firebase.auth(_appWarehouse);
         try {
             _dbWarehouse.enablePersistence({ synchronizeTabs: true }).catch(() => {});
         } catch (e) {}
@@ -46,6 +50,19 @@ export function getWarehouseDB() {
     return _dbWarehouse;
 }
 
+// Firebase Auth для packing (упаковщицы, операторы, админы)
+export function getAuth() {
+    if (!_auth) initFirebase();
+    return _auth;
+}
+
+// Firebase Auth для warehouse (кладовщики)
+export function getAuthWarehouse() {
+    if (!_authWarehouse) initFirebase();
+    return _authWarehouse;
+}
+
+// Вспомогательные функции для коллекций (по умолчанию — packing база)
 export function collection(name) {
     return getDB().collection(name);
 }

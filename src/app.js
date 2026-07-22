@@ -3,7 +3,7 @@
 import { initFirebase } from './services/firebase.js';
 import { toast } from './services/toast.js';
 import { esc } from './utils/helpers.js';
-import { getSession, saveSession, clearSession, loginUser, restoreSession } from './modules/auth.js';
+import { getSession, saveSession, clearSession, loginUser, restoreSession, logout } from './modules/auth.js';
 import { initPWA } from './ui/pwa.js';
 
 // ===== ССЫЛКИ НА КОНТЕЙНЕРЫ =====
@@ -21,7 +21,6 @@ function getContainers() {
 function hideAllUI() {
     const c = getContainers();
     if (c.tabBar) c.tabBar.style.display = 'none';
-    // scannerOverlay управляется через scanner.js (класс active), не трогаем
 }
 
 // ===== ЭКРАН ВХОДА =====
@@ -99,7 +98,6 @@ export async function renderApp() {
 
     const session = getSession();
 
-    // === НЕ ЗАЛОГИНЕН ===
     if (!session) {
         hideAllUI();
         c.root.innerHTML = renderLoginScreen();
@@ -107,7 +105,6 @@ export async function renderApp() {
         return;
     }
 
-    // === РОЛЬ НЕ ВЫБРАНА ===
     if (session.appRole === 'unknown') {
         hideAllUI();
         c.root.innerHTML = renderRoleSelect();
@@ -115,34 +112,28 @@ export async function renderApp() {
         return;
     }
 
-    // === АДМИН ===
     if (session.isAdmin) {
         hideAllUI();
         c.root.innerHTML = '<div class="app-container"><div class="loading-spinner">Загрузка админ-панели...</div></div>';
-
         const { renderAdminPanel, attachAdminEvents } = await import('./modules/admin.js');
         c.root.innerHTML = await renderAdminPanel(session);
         attachAdminEvents();
         return;
     }
 
-    // === УПАКОВЩИЦА / ОПЕРАТОР ===
     if (session.appRole === 'packer' || session.appRole === 'operator') {
         hideAllUI();
         if (c.tabBar) c.tabBar.style.display = 'flex';
         c.root.innerHTML = '<div class="app-container"><div class="loading-spinner">Загрузка...</div></div>';
-
         const { renderUserPanel, attachUserEvents } = await import('./modules/packing-ui.js');
         c.root.innerHTML = await renderUserPanel(session);
         attachUserEvents();
         return;
     }
 
-    // === КЛАДОВЩИК ===
     if (session.appRole === 'warehouse') {
         hideAllUI();
         c.root.innerHTML = '<div class="app-container"><div class="loading-spinner">Загрузка...</div></div>';
-
         const { renderWarehousePanel, attachWarehouseEvents } = await import('./modules/warehouse-ui.js');
         c.root.innerHTML = await renderWarehousePanel(session);
         attachWarehouseEvents();
@@ -294,9 +285,9 @@ function attachRoleSelectEvents(session) {
     });
 }
 
-// ===== ВЫХОД (глобальный) =====
+// ===== ВЫХОД =====
 window.doLogout = function () {
-    clearSession();
+    logout();
     renderApp();
 };
 

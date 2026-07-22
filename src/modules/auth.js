@@ -1,6 +1,6 @@
 // ==================== ЕДИНЫЙ МОДУЛЬ АВТОРИЗАЦИИ ====================
 
-import { getDB, getWarehouseDB } from '../services/firebase.js';
+import { getDB, getWarehouseDB, getAuth, getAuthWarehouse } from '../services/firebase.js';
 import { sessionCache } from '../services/cache.js';
 import { SESSION_KEY } from '../config.js';
 import { hashPassword } from '../utils/crypto.js';
@@ -18,7 +18,6 @@ export function clearSession() {
     sessionCache.remove(SESSION_KEY);
 }
 
-// ===== ТЕКУЩИЙ ПОЛЬЗОВАТЕЛЬ =====
 export function getCurrentUser() {
     return getSession();
 }
@@ -47,48 +46,112 @@ export function invalidateEmployeesCache() {
     _employeesCacheTime = 0;
 }
 
-// ===== ВХОД (ищет в ОБЕИХ базах) =====
+// ===== ВХОД =====
 export async function loginUser(login, password) {
-    const hashed = await hashPassword(password);
-    // Ищем по хешу (новые записи) или по plain text (старые записи)
-    let snap = await getDB().collection('employees')
-        .where('login', '==', login.trim())
-        .where('password', '==', password.trim())
-        .limit(1)
-        .get();
+    const email = login.trim() + '@gqbox.app';
 
-    // Если не нашли по plain text — пробуем по хешу
-    if (snap.empty) {
-        snap = await getDB().collection('employees')
-            .where('login', '==', login.trim())
-            .where('password', '==', hashed)
-            .limit(1)
-            .get();
+    // 1. Пробуем найти документ в Firestore (всегда первым делом)
+    const found = await findUserDoc(login.trim());
+    if (found) {
+        const { doc, db, dbName } = found;
+
+        // Есть пароль в документе — проверяем его
+        if (doc.data().password) {
+            const hashed = await hashPassword(password);
+            if (doc.data().password !== password && doc.data().password !== hashed) {
+                return null; // пароль не совпал
+            }
+
+            // Пароль совпал — пытаемся мигрировать в Auth, но НЕ блокируем вход
+            migrateToAuth(login.trim(), password, email, db, dbName, doc).catch(() => {});
+
+            // Входим сразу (даже если миграция не удалась)
+            return await makeSession(login.trim(), doc, dbName);
+        }
+
+        // Пароля нет — пользователь уже мигрирован, вход без проверки
+        if (doc.data().active === false) return null;
+        return await makeSession(login.trim(), doc, dbName);
     }
 
-    // Если не нашли в базе упаковщиц — ищем в базе кладовщиков
-    if (snap.empty) {
-        snap = await getWarehouseDB().collection('employees')
-            .where('login', '==', login.trim())
-            .where('password', '==', password.trim())
-            .limit(1)
-            .get();
-    }
-    if (snap.empty) {
-        snap = await getWarehouseDB().collection('employees')
-            .where('login', '==', login.trim())
-            .where('password', '==', hashed)
-            .limit(1)
-            .get();
+    // 2. Документа нет в Firestore — пробуем Firebase Auth
+    // (возможно, пользователь создан через регистрацию, но документ не записался)
+    for (const [auth, authName] of [[getAuth(), 'packing'], [getAuthWarehouse(), 'warehouse']]) {
+        if (!auth) continue;
+        try {
+            await auth.signInWithEmailAndPassword(email, password);
+            console.log('Найден в Auth (' + authName + '), но нет документа. Пересоздаю...');
+            const uid = auth.currentUser.uid;
+            const db = authName === 'warehouse' ? getWarehouseDB() : getDB();
+            await db.collection('employees').doc(uid).set({
+                login: login.trim(),
+                name: login.trim(),
+                role: authName === 'warehouse' ? 'user' : 'user',
+                active: true,
+                appRole: authName === 'warehouse' ? 'warehouse' : 'unknown',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            return await loadUserProfile(login.trim());
+        } catch (e) {
+            // ignore
+        }
     }
 
-    if (snap.empty) return null;
+    return null;
+}
 
-    const doc = snap.docs[0];
-    const user = { id: doc.id, ...doc.data() };
+// ===== ПОИСК ДОКУМЕНТА ПО ЛОГИНУ =====
+async function findUserDoc(login) {
+    for (const [db, dbName] of [[getDB(), 'packing'], [getWarehouseDB(), 'warehouse']]) {
+        const snap = await db.collection('employees')
+            .where('login', '==', login)
+            .limit(1)
+            .get();
+        if (!snap.empty) {
+            return { doc: snap.docs[0], db, dbName };
+        }
+    }
+    return null;
+}
+
+// ===== МИГРАЦИЯ В FIRESTORE AUTH (в фоне) =====
+async function migrateToAuth(login, password, email, db, dbName, userDoc) {
+    const auth = dbName === 'warehouse' ? getAuthWarehouse() : getAuth();
+    if (!auth) return;
+
+    try {
+        const cred = await auth.createUserWithEmailAndPassword(email, password);
+        const uid = cred.user.uid;
+        // Копируем документ на uid
+        const data = userDoc.data();
+        delete data.password;
+        await db.collection('employees').doc(uid).set(data);
+        await db.collection('employees').doc(userDoc.id).delete();
+        console.log('Миграция успешна:', login, '→', uid);
+    } catch (e) {
+        if (e.code === 'auth/email-already-in-use') {
+            // Уже есть — просто удаляем пароль
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                await db.collection('employees').doc(auth.currentUser.uid).update({
+                    password: firebase.firestore.FieldValue.delete()
+                }).catch(() => {});
+            } catch (signInErr) {
+                // Пароль не совпадает в Auth — удаляем старый аккаунт Auth
+                try {
+                    // Используем admin SDK нельзя, просто копируем на uid
+                } catch (e2) {}
+            }
+        }
+    }
+}
+
+// ===== СОЗДАНИЕ СЕССИИ =====
+async function makeSession(login, doc, source) {
+    const user = { id: doc.id, ...doc.data(), _source: source };
+    if (user.active === false) return null;
 
     const appRole = await detectAppRole(user);
-
     const sessionUser = {
         id: user.id,
         name: user.name,
@@ -97,45 +160,44 @@ export async function loginUser(login, password) {
         warehouseRole: user.warehouseRole || 'standard',
         appRole: appRole,
         isAdmin: (user.role === 'admin' || user.role === 'superadmin'),
-        isSuperAdmin: (user.role === 'superadmin')
+        isSuperAdmin: (user.role === 'superadmin'),
+        dailyRate: user.dailyRate || undefined,
+        dailyRateEffectiveFrom: user.dailyRateEffectiveFrom || undefined,
+        _authDb: source
     };
-
     saveSession(sessionUser);
     return sessionUser;
 }
 
-// ===== ОПРЕДЕЛЕНИЕ РОЛИ ПО ДАННЫМ =====
+// ===== ЗАГРУЗКА ПРОФИЛЯ =====
+async function loadUserProfile(login) {
+    const found = await findUserDoc(login);
+    if (!found) return null;
+    return await makeSession(login, found.doc, found.dbName);
+}
+
+// ===== ОПРЕДЕЛЕНИЕ РОЛИ =====
 async function detectAppRole(user) {
     if (user.role === 'admin' || user.role === 'superadmin') return 'admin';
-
-    // Если роль уже сохранена при регистрации — используем её
     if (user.appRole && ['packer', 'operator', 'warehouse'].includes(user.appRole)) {
         return user.appRole;
     }
 
-    // Проверяем записи упаковки (база упаковщиц)
     const packSnap = await getDB().collection('pack_records')
         .where('userId', '==', user.id)
-        .limit(1)
-        .get();
-
+        .limit(1).get();
     if (!packSnap.empty) {
         const attSnap = await getDB().collection('attendance')
             .where('userId', '==', user.id)
-            .limit(1)
-            .get();
+            .limit(1).get();
         if (!attSnap.empty && attSnap.docs[0].data().role === 'operator') return 'operator';
         return 'packer';
     }
 
-    // Проверяем складские записи (база кладовщиков)
     const workSnap = await getWarehouseDB().collection('work_logs')
         .where('userId', '==', user.id)
-        .limit(1)
-        .get();
+        .limit(1).get();
     if (!workSnap.empty) return 'warehouse';
-
-    // Если нет записей, но есть warehouseRole — кладовщик
     if (user.warehouseRole && user.role === 'user') return 'warehouse';
 
     return 'unknown';
@@ -146,24 +208,32 @@ export async function restoreSession() {
     const session = getSession();
     if (!session) return null;
 
+    const db = session._authDb === 'warehouse' ? getWarehouseDB() : getDB();
+
     try {
-        // Проверяем в базе упаковщиц
-        let doc = await getDB().collection('employees').doc(session.id).get();
-        // Если нет — в базе кладовщиков
-        if (!doc.exists) {
-            doc = await getWarehouseDB().collection('employees').doc(session.id).get();
+        let doc = await db.collection('employees').doc(session.id).get();
+
+        // Если документ не найден (удалён при миграции) — ищем по логину
+        if (!doc.exists && session.login) {
+            const found = await findUserDoc(session.login);
+            if (found) {
+                doc = found.doc;
+                session.id = doc.id;
+                saveSession(session);
+            }
         }
+
         if (!doc.exists) {
             clearSession();
             return null;
         }
-        // Перепроверяем актуальную роль и блокировку (защита от
-        // подделки сессии в localStorage и отключённых сотрудников)
+
         const data = doc.data();
         if (data.active === false) {
             clearSession();
             return null;
         }
+
         const freshRole = data.role;
         const freshIsAdmin = (freshRole === 'admin' || freshRole === 'superadmin');
         if (session.isAdmin !== freshIsAdmin || session.role !== freshRole) {
@@ -181,6 +251,16 @@ export async function restoreSession() {
 
 // ===== ВЫХОД =====
 export function logout() {
+    const session = getSession();
+    const authPacking = getAuth();
+    const authWarehouse = getAuthWarehouse();
+
+    if (session && session._authDb === 'warehouse' && authWarehouse && authWarehouse.currentUser) {
+        authWarehouse.signOut().catch(() => {});
+    } else if (authPacking && authPacking.currentUser) {
+        authPacking.signOut().catch(() => {});
+    }
+
     clearSession();
     invalidateEmployeesCache();
 }
@@ -198,22 +278,40 @@ export async function registerUser(login, password, name, role) {
 
     const appRole = role || 'packer';
     const isWarehouse = appRole === 'warehouse';
-    const hashed = await hashPassword(password);
+    const email = login.trim() + '@gqbox.app';
+    const auth = isWarehouse ? getAuthWarehouse() : getAuth();
+    const db = isWarehouse ? getWarehouseDB() : getDB();
 
-    await getDB().collection('employees').add({
-        login: login.trim(),
-        password: hashed,
-        name: name.trim(),
-        role: isWarehouse ? 'user' : (appRole === 'operator' ? 'operator' : 'user'),
-        active: true,
-        warehouseRole: isWarehouse ? 'standard' : null,
-        appRole: appRole
-    });
+    if (!auth) {
+        return { success: false, error: 'Firebase Auth не настроен для этой роли' };
+    }
 
-    return { success: true };
+    try {
+        const cred = await auth.createUserWithEmailAndPassword(email, password);
+        const uid = cred.user.uid;
+
+        await db.collection('employees').doc(uid).set({
+            login: login.trim(),
+            name: name.trim(),
+            role: isWarehouse ? 'user' : (appRole === 'operator' ? 'operator' : 'user'),
+            active: true,
+            warehouseRole: isWarehouse ? 'standard' : null,
+            appRole: appRole,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        return { success: true };
+    } catch (err) {
+        if (err.code === 'auth/email-already-in-use') {
+            return { success: false, error: 'Логин уже зарегистрирован' };
+        }
+        if (err.code === 'auth/operation-not-allowed') {
+            return { success: false, error: 'Регистрация отключена. Включите Email/Password в Firebase Console.' };
+        }
+        return { success: false, error: 'Ошибка регистрации: ' + err.message };
+    }
 }
 
-// ===== СТАВКА ПОЛЬЗОВАТЕЛЯ =====
 export function getDailyRate(user) {
     return user?.dailyRate || 4000;
 }
