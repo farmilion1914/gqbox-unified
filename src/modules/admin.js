@@ -1155,7 +1155,10 @@ async function loadAdminWarehouseTab() {
                 const { getWarehouseDB } = await import('../services/firebase.js');
                 const empSnap = await getWarehouseDB().collection('employees').orderBy('name').get();
                 const empMap = {};
-                empSnap.docs.forEach(d => { empMap[d.id] = { id: d.id, name: d.data().name, warehouseRole: d.data().warehouseRole || 'standard' }; });
+                empSnap.docs.forEach(d => {
+                    const data = d.data();
+                    empMap[d.id] = { id: d.id, name: data.name, warehouseRole: data.warehouseRole || 'standard', dailyRate: data.dailyRate };
+                });
                 const { salaryByUser } = await calculateAllSalaries(startDate, endDate);
                 const userIds = Object.keys(salaryByUser);
 
@@ -1434,6 +1437,19 @@ async function loadAdminUsersTab() {
                             if (empInList) {
                                 empInList.dailyRate = val;
                                 empInList.dailyRateEffectiveFrom = today;
+                            }
+                            // Если у оператора уже есть отметка сегодня — обновляем сумму в operator_earnings
+                            try {
+                                const opSnap = await db.collection('operator_earnings')
+                                    .where('userId', '==', userId)
+                                    .where('date', '==', today)
+                                    .limit(1)
+                                    .get();
+                                if (!opSnap.empty) {
+                                    await db.collection('operator_earnings').doc(opSnap.docs[0].id).update({ amount: val });
+                                }
+                            } catch (e) {
+                                // Не критично — в следующий раз отметится уже с новой ставкой
                             }
                             // НЕ перезагружаем весь список — UI уже обновлён выше
                         } catch (err) {

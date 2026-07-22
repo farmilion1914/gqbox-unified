@@ -15,7 +15,15 @@ export async function calculateSalary(userId, warehouseRole, startDate, endDate)
     const cacheKey = userId + '_' + startDate + '_' + endDate;
     if (_salaryCache[cacheKey]) return _salaryCache[cacheKey];
 
-    const dayRate = getWarehouseRoleRate(warehouseRole);
+    // Берём индивидуальную ставку из документа сотрудника, если есть
+    let dayRate;
+    try {
+        const empDoc = await getWarehouseDB().collection('employees').doc(userId).get();
+        const empData = empDoc.data();
+        dayRate = empData?.dailyRate || getWarehouseRoleRate(warehouseRole);
+    } catch {
+        dayRate = getWarehouseRoleRate(warehouseRole);
+    }
 
     const attSnap = await getWarehouseDB().collection('attendance')
         .where('userId', '==', userId)
@@ -148,7 +156,8 @@ export async function calculateAllSalaries(startDate, endDate) {
     const empSnap = await getWarehouseDB().collection('employees').orderBy('name').get();
     const empMap = {};
     empSnap.docs.forEach(d => {
-        empMap[d.id] = { id: d.id, name: d.data().name, warehouseRole: d.data().warehouseRole || 'standard' };
+        const data = d.data();
+        empMap[d.id] = { id: d.id, name: data.name, warehouseRole: data.warehouseRole || 'standard', dailyRate: data.dailyRate };
     });
 
     const logsSnap = await getWarehouseDB().collection('work_logs')
@@ -174,7 +183,7 @@ export async function calculateAllSalaries(startDate, endDate) {
     Object.keys(attByUser).forEach(uid => {
         if (!salaryByUser[uid]) salaryByUser[uid] = { attendance: {}, kpi: {}, total: 0 };
         const emp = empMap[uid] || { warehouseRole: 'standard' };
-        const dayRate = getWarehouseRoleRate(emp.warehouseRole);
+        const dayRate = emp.dailyRate || getWarehouseRoleRate(emp.warehouseRole);
         Object.keys(attByUser[uid]).forEach(wh => {
             const days = attByUser[uid][wh].size;
             const amount = days * dayRate;
